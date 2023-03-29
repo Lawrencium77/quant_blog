@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "16459086aae8c2c7",
+        "id": "5eaf65d2256c822a",
         "type": "tabs",
         "children": [
           {
-            "id": "ffc0696cf94d5bac",
+            "id": "1a441f9c67893da4",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
                 "file": "Fast and Flexible GPU Quantization for Transformers.md",
-                "mode": "preview",
+                "mode": "source",
                 "source": false
               }
             }
@@ -69,7 +69,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 381.5
+    "width": 300
   },
   "right": {
     "id": "8bd067abbbfdbde5",
@@ -146,21 +146,20 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "ffc0696cf94d5bac",
+  "active": "1a441f9c67893da4",
   "lastOpenFiles": [
-    "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
-    "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
-    "_attachments/Mode 1 GEMM (2).svg",
-    "_attachments/Mode 1 GEMM (1).svg",
-    "_attachments/Blank diagram (4).svg",
-    "_attachments/Blank diagram (2).svg",
-    "_attachments/Blank diagram (1).svg",
+    "Pasted image 20230329111800.png",
+    "Pasted image 20230329113300.png",
+    "Pasted image 20230329113147.png",
+    "Pasted image 20230329113045.png",
+    "Fast and Flexible GPU Quantization for Transformers.md",
+    "_attachments/Pasted image 20230313162138.png",
+    "_attachments/Pasted image 20230329111413.png",
     "_attachments/Pasted image 20230329113458.png",
     "_attachments/Pasted image 20230329113436.png",
     "_attachments/Pasted image 20230329113410.png",
     "_attachments/Pasted image 20230329113209.png",
-    "Fast and Flexible GPU Quantization for Transformers.md",
-    "i8f16.md",
+    "_attachments/Pasted image 20230329113112.png",
     "README.md",
     "_attachments"
   ]
