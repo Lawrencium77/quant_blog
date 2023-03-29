@@ -1,14 +1,45 @@
-```toc
-```
-
 ## Introduction
-The goal of quantization is to minimize the precision of model parameters and activations whilst maintaining accuracy. The benefit of this being higher throughput and lower memory footprint.
+As transformer models increase in size, the computational (and therefore financial) cost of running inference also grows. Many companies now face the challenge of deploying state-of-the-art models in a cost-effective way.
 
-Disclaimer that this is _scalar_ quantization, not _vector_ quantization.
+This has led to a surge in interest for optimizing transformer inference. There are a range of techniques available [1], including:
+
+* Sparsity
+* Pruning
+* Conditional Computation (e.g., Mixture of Experts)
+* Knowledge Distillation
+* Quantization
+
+Of these, quantization is in some sense the most universal. It can be applied to any network, regardless of architecture.
+
+By reducing the precision of model parameters and activations, quantization aims to minimize increase throughput and decrease memory footprint, at the cost of potentially damaging model accuracy.
+
+Provided the decrease in accuracy is minimal, this sounds ideal. However, this research area is still young, and implementing a GPU-based quantization scheme that *actually speeds up your model* is not straightforward. The main challenges stem from the lack of  fast General Matrix Multiply (GEMM) GPU kernels do not exist for precisions lower than INT8, and the overheads associated with converting between floating point (FP) and Integer (INT) data types.
+
+In this blog, we provide a detailed guide to GPU-based quantization of transformers. We describe an approach that is both flexible and capable of genuinely improve throughput. The content is organized as follows:
+
+* [[#Background]]
+	* [[#The Quantization Equation]]
+	* [[#Dynamic vs Static Quantization]]
+	* [[#Quantization Granularity]]
+* [[#Important Concepts]]
+	* [[#Calibration]]
+	* [[#Mode 1]]
+	* [[#Mode 2]]
+	* [[#SmoothQuant]]
+* [[#Implementation]]
+	* [[#GPU Quantization in Practice]]
+	* [[#Memory Layouts]]
+	* [[#Fusion Strategy (and diagrams)]]
+* [[#Some Brief Results]]
+	* [[#Accuracy]]
+	* [[# Throughput]]
+* [[#References]]
+
+
 
 ## Background
 
-We’ll begin with a high-level summary of quantization. If you’d like more reading on this topic, we’ve listed some nice blogs/papers in the References section [1-4].
+We’ll begin with a high-level summary of quantization. If you’d like more reading on this topic, we’ve listed some nice blogs/papers in the [[#References]] section [1-4].
 
 ### The Quantization Equation
 In principle, we can use any function to map between floating point (FP) and integer (INT) values. But it’s simplest (and quickest on hardware) to use a linear operation [4]:
@@ -45,7 +76,7 @@ The simplest approach is to use the same scale factor for all elements of W (and
 
 It’s also feasible to share quantization parameters between some subgroups of each input matrix. A common choice is to assign a specific scale factor to each column of W. This is **per-channel (aka per-column) quantization**.
 
-## Theory
+## Important Concepts
 Having covered the basics of quantization, we’ll now look at the important concepts in their implementation.
 
 ### Calibration
@@ -62,11 +93,11 @@ We found that the final approach was most performant (although this may be diffe
 
 We recommend TensorRT’s PyTorch Quantization Toolkit [5] for the calibration process.
 
-#### Mode 1
+### Mode 1
 
-#### Mode 2
+### Mode 2
 
-#### SmoothQuant
+### SmoothQuant
 
 * SQ vs INT8.LM()
 
@@ -76,7 +107,7 @@ We recommend TensorRT’s PyTorch Quantization Toolkit [5] for the calibration p
 - Kernel Fusion - Short Description and Link
 - Reference Kernel Fusion & Timing Blog
 
-### GPU Quantization in practise
+### GPU Quantization in Practice
 
 In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operation against INT8 Tensor Cores, which were first introduced with the Turing architecture (compute capability 7.0+). This can be achieved by running the `mma.sync.aligned.m8n32k16.row.col.s32.s8.s8.s32` PTX instruction, or calling `wmma::mma_sync` at the CUDA level. However, both approaches require careful management of data movement and layouts to maximize Tensor Core throughput. Thankfully these lower level details are abstracted away by the cuBLASLt  `cublasLtMatmul`  and CUTLASS `device::Gemm`  APIs, both of which support IMMA (integer matrix multiply accumulate). Whilst they are not currently supported natively in PyTorch, there are other libraries available such as **torch-int** (SmoothQuant) and **bitsandbytes** (LLM.int8()) which expose Python bindings to the underlying C/C++ calls. Microsoft's **ZeroQuant** also leverages CUTLASS but wrappers for their INT8 kernels have not yet been open sourced.
 
@@ -112,13 +143,14 @@ Whilst COL32 might be the most performant option, there exists a tension whereby
 
 ### Fusion Strategy (and diagrams)
 
--   Results
-	-   Accuracy
-	-   [Performance](https://speechmatics.atlassian.net/wiki/spaces/INB/pages/3570565200/Quantization#Performance)
-	-   Training Head on top of Body
-	-   Sensitivity Analysis
+## Some Brief Results
+### Accuracy
+### Throughput
 
 ## References
+Section 0: Intro
+1. https://lilianweng.github.io/posts/2023-01-10-inference-optimization/
+
 Section 1: Background:
 
 1.     [https://pytorch.org/blog/quantization-in-practice/](https://pytorch.org/blog/quantization-in-practice/)
