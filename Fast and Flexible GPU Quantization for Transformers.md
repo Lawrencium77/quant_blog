@@ -39,59 +39,57 @@ In this blog, we provide a detailed guide to GPU-based quantization of transform
 
 ## Background
 
-We’ll begin with a high-level summary of quantization. If you’d like more reading on this topic, we’ve listed some nice blogs/papers in the [[#References]] section [1-4].
+We’ll begin with a quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [[#References]] section [1-4].
 
 ### The Quantization Equation
-In principle, we can use any function to map between floating point (FP) and integer (INT) values. But it’s simplest (and quickest on hardware) to use a linear operation [4]:
+In principle, we can use any function to map between FP and INT values. But a linear function is simplest and quickest on the hardware [4]:
 
 $$Q(r)=\textrm{Int}(r/S)-Z$$
 
-where $Q, r$ are the quantized output and floating point input respectively. $S, Z$ are a scale factor and bias. To further minimize inference cost we can set $Z=0$ (we do this for our GPU implementation).
+Here, $Q, r$ are the INT output and FP input, while $S, Z$ are a scale factor and bias. To minimize inference cost, we can set $Z=0$ (we do this for our GPU implementation).
 
 The corresponding dequantization equation is even simpler:
 
-$$\tilde{r}=S(Q(r)+Z$$
+$$\tilde{r}=S Q(r)$$
 
-Some terminology: Formula (1) describes **uniform quantization** (since the quantized values are uniformly distribute over the input space).
-
-To calculate $S$ we select a **clipping range** $[\alpha, \beta]$ and then do:
+This method is called **uniform quantization** since the quantized values are uniformly distributed over the input space. To calculate $S$ we select a **clipping range** $[\alpha, \beta]$ and then use:
 
 $$S=\frac{\beta-\alpha}{2^b-1}$$
 
-where $b$ is the number of bits in our quantization scheme. An extra constraint we choose to enforce is $\alpha=-beta$, which is called **symmetric quantization**. Its benefit is that this is equivalent to setting $Z=0$, which simplifies the (de)quantization function.
+Here, $b$ is the number of bits in our quantization scheme. We choose to enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization function by setting $Z=0$.
 
 ### Dynamic vs Static Quantization
-A key question is how to determine the clipping range. Too small, and we’ll excessively “truncate” activations & weights. Too big, and we’ll lose precision.
+A key question is how to determine the clipping range. Too small, and we’ll excessively “truncate” activations and weights. Too big, and we’ll lose precision.
 
-Whilst model parameters can always be quantized offline, its activations can be quantized **dynamically** (the clipping range is calculated for each activation, during a forward pass) or **statically** (also offline). To do static quantization, we run some forward passes and measure the distribution of each activation in the network in order to calculate the clipping range. This process is called **calibration**. For more details, see the next section.
+While model parameters can always be quantized offline, its activations can be quantized **dynamically** (with the clipping range calculated for each activation during a forward pass) or **statically** (also offline). Static quantization involves running some forward passes, measuring the distribution of each activation in the network, and calculating the clipping range. This process is called **calibration**. For more information, see the next section.
 
-Dynamic quantization is generally more accurate but incurs a computational overhead when calibrating the scalar online. Therefore, **we** **only consider static quantization on GPU** as the scalar reduction is expensive relative to the INT8 matmul, and so can severely limit any performance gains.
+Dynamic quantization tends to be more accurate but requires additional computational overhead for online scalar calibration. As a result, **we only consider static quantization on GPU** because scalar reduction, relative to an INT8 matmul, can be costly and limit performance gains.
 
 ### Quantization Granularity
-A final distinction to be made is how we share quantization parameters between elements of our parameters and activations. For the rest of this blog, we will use the following diagram to describe a matmul:
+A final distinction to be made is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
 
 ![](_attachments/Pasted%20image%2020230313162138.png)
 
-The simplest approach is to use the same scale factor for all elements of W (and likewise for X). This is **per-tensor** quantization.
+The simplest approach is to use the same scale factor for all elements of $W$ (and likewise for $X$). This is known as **per-tensor** quantization.
 
-It’s also feasible to share quantization parameters between some subgroups of each input matrix. A common choice is to assign a specific scale factor to each column of W. This is **per-channel (aka per-column) quantization**.
+It’s also feasible to share quantization parameters between some subgroups of each input matrix. A popular options is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**.
 
 ## Important Concepts
-Having covered the basics of quantization, we’ll now look at the important concepts in their implementation.
+With the fundamentals of quantization covered, let's explore the important concepts in its implementation.
 
 ### Calibration
 
-As explained above, calibration is the process of obtaining activation quantization parameters. We pass a few batches of data through the model to measure the distribution over activations.
+Calibration, as mentioned above, involves obtaining activation quantization parameters by passing several batches of data through the model to measure activation distribution.
 
-There are multiple ways of obtaining a clipping range from these activations. These include:
+There are multiple methods to derive a clipping range from these activations, such as:
 
-* Taking a simple min/max
+* Using a simple min/max
 * Minimising KL Divergence between the input and quantized distributions
 * Minimising the Mean-Squared Error between input and quantized distributions
 
-We found that the final approach was most performant (although this may be different for different models).
+We found that the final approach was most performant (although this may vary for different models).
 
-We recommend TensorRT’s PyTorch Quantization Toolkit [5] for the calibration process.
+To perform the calibration process, we recommend using TensorRT’s PyTorch Quantization Toolkit [5]. 
 
 ### Mode 1
 
