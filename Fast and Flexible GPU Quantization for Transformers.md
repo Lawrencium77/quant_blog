@@ -134,7 +134,7 @@ By zooming in (4 rows, 16 columns) we hopefully get a clearer picture of the lay
 ### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
 ![](_attachments/Pasted%20image%2020230329113458.png)
 
-Whilst `COL32` might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains, and so must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
+While `COL32` might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains, and so must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
 
 ### Fusion Strategy (and diagrams)
 
