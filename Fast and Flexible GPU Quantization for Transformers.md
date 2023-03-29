@@ -17,29 +17,31 @@ Provided the decrease in accuracy is minimal, this sounds ideal. However, this r
 
 In this blog, we provide a detailed guide to GPU-based quantization of transformers. We describe an approach that is both flexible and capable of genuinely improve throughput. The content is organized as follows:
 
-* [[#Background]]
-	* [[#The Quantization Equation]]
-	* [[#Dynamic vs Static Quantization]]
-	* [[#Quantization Granularity]]
-* [[#Important Concepts]]
-	* [[#Calibration]]
-	* [[#Mode 1]]
-	* [[#Mode 2]]
-	* [[#SmoothQuant]]
-* [[#Implementation]]
-	* [[#GPU Quantization in Practice]]
-	* [[#Memory Layouts]]
-	* [[#Fusion Strategy (and diagrams)]]
-* [[#Some Brief Results]]
-	* [[#Accuracy]]
-	* [[# Throughput]]
-* [[#References]]
+* [Background](#Background)
+	* [The Quantization Equation](#The%20Quantization%20Equation)
+	* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
+	* [Quantization Granularity](#Quantization%20Granularity)
+* [Important Concepts](#Important%20Concepts)
+	* [Calibration](#Calibration)
+	* [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
+		* [i8f16](#i8f16)
+		* [i8i8](#i8i8)
+		* [Quantization Operation Overheads](#Quantization%20Operation%20Overheads)
+	* [SmoothQuant](#SmoothQuant)
+* [Implementation](#Implementation)
+	* [GPU Quantization in Practice](#GPU%20Quantization%20in%20Practice)
+	* [Memory Layouts](#Memory%20Layouts)
+	* [Fusion Strategy (and diagrams)](#Fusion%20Strategy%20(and%20diagrams))
+* [Some Brief Results](#Some%20Brief%20Results)
+	* [Accuracy](#Accuracy)
+	* [Throughput](#%20Throughput)
+* [References](#References)
 
 
 
 ## Background
 
-We’ll begin with a quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [[#References]] section [1-4].
+We’ll begin with a quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [References](#References) section [1-4].
 
 ### The Quantization Equation
 In principle, we can use any function to map between FP and INT values. But a linear function is simplest and quickest on the hardware [4]:
@@ -91,13 +93,93 @@ We found that the final approach was most performant (although this may vary for
 
 To perform the calibration process, we recommend using TensorRT’s PyTorch Quantization Toolkit [5]. 
 
-### Mode 1
+### Specifics of  INT8 GEMMs
+The core element of a quantized neural network is INT8 matrix multiplication. Focusing on its details is crucial for an efficient implementation. This section describes these details, and serves as context for the later section describing [Implementation](#Implementation).
 
-### Mode 2
+We identify two types of INT8 matmul, differentiated by their return type. We'll discuss each of these in turn.
+
+#### i8f16
+Consider the following matrix multiplication:
+
+$$Y=WX+b$$
+
+where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$, $b\in \mathbb{R}^{d}$  are the input, weight, output, and bias tensors respectively. Consider the case where all tensors are **Floating Point**, but the matrix multiply itself runs in INT8. An example INT8 to FP16 (i8f16) matrix multiplication would be implemented as follows:
+
+![](_attachments/Mode%201%20GEMM%20(1).svg)
+
+There are several points to note:
+
+* The input $X$ first passes through a quantization operation, labelled Q. This performs the operation described in Equation (1).
+* Our weights $W$ can be quantized offline. 
+* The output of the Matmul has **INT32** dtype. The structure used to contain this output is called the **accumulator**. The accumulator value is passed through a dequantization op, labelled DQ. This performs the operation described in Equation (2).
+* The bias step is not quantized.
+
+Multiplication of two signed INT8 numbers can be represented by in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
+
+#### i8i8
+Returning in INT8 involves an extra step:
+
+![](_attachments/Blank%20diagram%20(1).svg)
+
+In this **requantization** step, labelled RQ, we convert the INT32 representation back into INT8. The benefit is a reduction in the amount of data written from GPU SRAM to DRAM.
+
+#### Quantization Operation Overheads
+To fully realise the throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html). 
+The following diagrams demonstrate this for i8f16 and i8i8. Fused operators are indicated by the dashed boxes:
+
+![](_attachments/Mode%201%20GEMM%20(2).svg)
+
+![](_attachments/Blank%20diagram%20(2).svg)
+
+In both cases, the Q node can sometimes be fused with a preceding operation (usually a layernorm). 
+In i8f16, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
+In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ is fused with the bias add, as well as any ops that might follow (for example, a residual add).
+
 
 ### SmoothQuant
+In this section, we give an intuition behind SmoothQuant - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
 
-* SQ vs INT8.LM()
+The authors describe two key observations that motivate SmoothQuant:
+
+1. The distribution of neural network weights is uniform and flat. The distributions of activations is not. This makes activations harder to quantize than weights.
+2. Activation outliers appear in fixed channels.
+
+The following diagram, taken from the original paper, illustrates these ideas for a single linear layer:
+
+![](_attachments/Screenshot%202023-03-29%20at%2014.43.18.png)
+
+On the left-hand side, we see dramatic outlier channels in the input tensor. Given this, an obvious solution would be to apply a per-channel quantization factor. Unfortunately, this is not feasible: applying a scaling factor to individual columns of the input tensor would not factor out nicely in the output, meaning we could not apply dequantization.
+
+Other works have instead used a per-token quantization granularity. This can improve accuracy slightly, but does not solve the issue of fixed-channel outlier values. 
+
+Instead, SmoothQuant aims to "migrate" the quantization difficulty from activations to weights. It does so by scaling each channel of the activations by a "smoothing factor". To ensure mathematical equivalence, we must scale each token of the weight tensor by the same amount in the opposite direction.
+
+Mathematically, this is given by:
+
+$$Y = (X\textrm{diag}(s)^{-1})\cdot(\textrm{diag}(s)W)=\hat{X}\hat{W}$$
+
+where $s\in \mathbb{R}^d$  is our smoothing factor. Here's a diagram, again taken from the paper:
+
+![](_attachments/Screenshot%202023-03-29%20at%2015.01.32.png)
+
+All that remains is how to determine $s$. Since quantization is easiest when all channels have the same maximum value, one possibility is:
+
+$$s_j=\max(|X_j|)$$
+where $j$ is the channel index. This ensures that all channels would have the same maximum value (of 1). However, this may push too much of the quantization difficulty to the weights, meaning we harm quantization accuracy.
+
+The other extreme is:
+
+$$s_j = 1 / \max({|W_j|})$$
+To control the migration strength, the authors propose combining each of these equations by introducing a hyperparameter, $\alpha \in [0,1]$:
+
+$$s_j=\frac{\max(|X_j|)^\alpha}{\max({|W_j|})^{1-\alpha}}$$
+
+$\alpha=1$ corresponds to migrating all difficulty to the weights. $\alpha=0$ migrates all difficulty to the activations. In general we found setting $\alpha$ to be between 0.5 and 0.9 achieved good performance.
+
+It's important to appreciate that this smoothing process can be applied **offline**. For the weights, this is trivial. For the activations, we exploit the fact that GEMM operations in a transformer block often follow a layernorm. Combining the multiplication by $\textrm{diag}(s)^{-1}$  into the layernorm parameters means that it too can be done offline.
+A consequence of this is that SmoothQuant can only be applied to matrix multiplications that follow an operation which, like Layernorm, can accommodate any smoothing factor into its parameters. The diagram below indicates the relevant matrix multiplies in a standard transformer block:
+
+![](_attachments/Blank%20diagram%20(4).svg)
 
 
 ## Implementation
@@ -157,7 +239,6 @@ Section 1: Background:
 4.     [https://arxiv.org/pdf/2103.13630.pdf](https://arxiv.org/pdf/2103.13630.pdf)
 
 Section 2: Theory
-
-5.     [https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization)
-6.
-
+5. [https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization)
+6. https://arxiv.org/abs/2211.10438
+7. 
