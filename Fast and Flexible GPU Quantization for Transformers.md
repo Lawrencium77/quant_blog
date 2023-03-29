@@ -117,7 +117,7 @@ Whilst these options are already faster than FP16, to absolutely maximize perfor
 ### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
 ![](_attachments/Pasted%20image%2020230329111707.png)
 
-By zooming in (4 rows, 16 columns) we hopefully get a clearer picture pf the layout pattern
+By zooming in (4 rows, 16 columns) we hopefully get a clearer picture of the layout pattern
 
 #### Row major (CUBLASLT_ORDER_ROW)
 ![](_attachments/Pasted%20image%2020230329113112.png)
