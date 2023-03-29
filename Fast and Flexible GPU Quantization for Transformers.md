@@ -100,7 +100,7 @@ Unfortunately this is not the case with cuBLASLt, which operates on **column maj
 
 While these options are already faster than FP16, to absolutely maximize performance the input tensors must be ordered in the exceptionally non-standard `COL32`/`CUBLASLT_ORDER_COL32_2R_4R4`/`COL32` layout.  `COL32` is an interleaved layout which can be interpreted as row major ordered, but in blocks of 32 columns. CUTLASS supports this by specifying `cutlass::layout::ColumnMajorInterleaved<32>`, where `<1>` would be equivalent to column major and `<n>` where n is equal to the number of columns in the matrix would be equivalent to column major.
 
-`CUBLASLT_ORDER_COL32_2R_4R4` is even more exotic, and it probably best explained visually through the diagrams below which shows a 32x64 matrix, where each value is the address offset in memory for that element.
+`CUBLASLT_ORDER_COL32_2R_4R4` is even more exotic, and is probably best explained visually through the diagrams below which shows a 32x64 matrix, where each value is the address offset in memory for that element.
 
 #### Row major (CUBLASLT_ORDER_ROW)
 ![](_attachments/Pasted%20image%2020230329111413.png)
