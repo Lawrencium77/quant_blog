@@ -103,36 +103,36 @@ Whilst these options are already faster than FP16, to absolutely maximize perfor
 `CUBLASLT_ORDER_COL32_2R_4R4` is even more exotic, and it probably best explained visually through the diagrams below which shows a 32x64 matrix, where each value is the address offset in memory for that element.
 
 #### Row major (CUBLASLT_ORDER_ROW)
-![[Pasted image 20230329111413.png]]
+![](_attachments/Pasted%20image%2020230329111413.png)
 
 #### Column major (CUBLASLT_ORDER_COL)
-![[Pasted image 20230329111836.png]]
+![](_attachments/Pasted%20image%2020230329111836.png)
 
 #### Column 32 (CUBLASLT_ORDER_COL32)
-![[Pasted image 20230329111450.png]]
+![](_attachments/Pasted%20image%2020230329111450.png)
 
 #### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
-![[Pasted image 20230329111522.png]]
+![](_attachments/Pasted%20image%2020230329111522.png)
 
 ### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
-![[Pasted image 20230329111707.png]]
+![](_attachments/Pasted%20image%2020230329111707.png)
 
 By zooming in (4 rows, 16 columns) we hopefully get a clearer picture pf the layout pattern
 
 #### Row major (CUBLASLT_ORDER_ROW)
-![[Pasted image 20230329113112.png]]
+![](_attachments/Pasted%20image%2020230329113112.png)
 
 #### Column major (CUBLASLT_ORDER_COL)
-![[Pasted image 20230329113209.png]]
+![](_attachments/Pasted%20image%2020230329113209.png)
 
 #### Column 32 (CUBLASLT_ORDER_COL32)
-![[Pasted image 20230329113410.png]]
+![](_attachments/Pasted%20image%2020230329113410.png)
 
 #### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
-![[Pasted image 20230329113436.png]]
+![](_attachments/Pasted%20image%2020230329113436.png)
 
 ### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
-![[Pasted image 20230329113458.png]]
+![](_attachments/Pasted%20image%2020230329113458.png)
 
 Whilst `COL32` might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains, and so must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
 
