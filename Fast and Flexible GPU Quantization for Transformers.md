@@ -90,25 +90,47 @@ As such, for the remainder of the blog we will focus on the challenges of achiev
 
 ### Memory Layouts
 
-As previously suggested, ensuring the input and weight matrices satisfy the memory layout requirements is essential for performance (and a correct result!) when computing an INT8 GEMM. By default all PyTorch operators expect a **row major** ordering for input and outputs tensors, so ideally we would use the same layout for our INT8 matmul to avoid conversion overhead.
+As previously suggested, ensuring the input and weight matrices satisfy the memory layout requirements is essential for performance when computing an INT8 GEMM. By default all PyTorch operators expect a **row major** ordering for input and outputs tensors, so ideally we would use the same layout for our INT8 matmul to avoid conversion overhead.
 
-Unfortunately this is not the case with cuBLASLt, which operates on **column major** by default. There is some good news as the cublasLtMatmul API supports row major input tensor with column major weight tensor (and we can transpose the weight tensor offline), but the output is returned in column major i.e. input/weight/output = ROW/COL/COL. CUTLASS  goes further and supports ROW/COL/ROW out of the box, which makes it a great option for PyTorch integrations.
+Unfortunately this is not the case with cuBLASLt, which operates on **column major** by default. There is some good news as the `cublasLtMatmul` API supports row major input tensor with column major weight tensor (and we can transpose the weight tensor offline), but the output is returned in column major i.e. input/weight/output = `ROW`/`COL`/`COL`. CUTLASS  goes further and supports `ROW`/`COL`/`ROW` out of the box, which makes it a great option for PyTorch integrations.
 
-Whilst these options are already faster than FP16, to absolutely maximize performance the input tensors must be ordered in the exceptionally non-standard COL32/CUBLASLT_ORDER_COL32_2R_4R4/COL32 layout.  COL32 is an interleaved layout which can be interpreted as row major ordered, but in blocks of 32 columns. CUTLASS supports this by specifying `cutlass::layout::ColumnMajorInterleaved<32>`, where `<1>` would be equivalent to column major and `<n>` where n is equal to the number of columns in the matrix would be equivalent to column major.
+Whilst these options are already faster than FP16, to absolutely maximize performance the input tensors must be ordered in the exceptionally non-standard `COL32`/`CUBLASLT_ORDER_COL32_2R_4R4`/`COL32` layout.  `COL32` is an interleaved layout which can be interpreted as row major ordered, but in blocks of 32 columns. CUTLASS supports this by specifying `cutlass::layout::ColumnMajorInterleaved<32>`, where `<1>` would be equivalent to column major and `<n>` where n is equal to the number of columns in the matrix would be equivalent to column major.
 
-CUBLASLT_ORDER_COL32_2R_4R4 is even more exotic, and it probably best explained visually through the diagrams below which show a 34x64 matrix, where each value is the address offset in memory for that element.
+`CUBLASLT_ORDER_COL32_2R_4R4` is even more exotic, and it probably best explained visually through the diagrams below which shows a 32x64 matrix, where each value is the address offset in memory for that element.
 
-ROW MAJOR
+#### Row major (CUBLASLT_ORDER_ROW)
+![[Pasted image 20230329111413.png]]
 
-COLUMN MAJOR
+#### Column major (CUBLASLT_ORDER_COL)
+![[Pasted image 20230329111836.png]]
 
-COLUMN32
+#### Column 32 (CUBLASLT_ORDER_COL32)
+![[Pasted image 20230329111450.png]]
 
-COLUMN TURING
+#### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
+![[Pasted image 20230329111522.png]]
 
-COLUMN AMPERE
+### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
+![[Pasted image 20230329111707.png]]
 
-Whilst COL32 might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains, and so must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
+By zooming in (4 rows, 16 columns) we hopefully get a clearer picture pf the layout pattern
+
+#### Row major (CUBLASLT_ORDER_ROW)
+![[Pasted image 20230329113112.png]]
+
+#### Column major (CUBLASLT_ORDER_COL)
+![[Pasted image 20230329113209.png]]
+
+#### Column 32 (CUBLASLT_ORDER_COL32)
+![[Pasted image 20230329113410.png]]
+
+#### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
+![[Pasted image 20230329113436.png]]
+
+### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
+![[Pasted image 20230329113458.png]]
+
+Whilst `COL32` might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains, and so must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
 
 ### Fusion Strategy (and diagrams)
 
