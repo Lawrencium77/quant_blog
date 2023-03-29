@@ -13,7 +13,7 @@ Of these, quantization is in some sense the most universal. It can be applied to
 
 By reducing the precision of model parameters and activations, quantization aims to minimize increase throughput and decrease memory footprint, at the cost of potentially damaging model accuracy.
 
-Provided the decrease in accuracy is minimal, this sounds ideal. However, this research area is still young, and implementing a GPU-based quantization scheme that *actually speeds up your model* is not straightforward. The main challenges stem from the lack of  fast General Matrix Multiply (GEMM) GPU kernels do not exist for precisions lower than INT8, and the overheads associated with converting between floating point (FP) and Integer (INT) data types.
+Provided the decrease in accuracy is minimal, this sounds ideal. However, this research area is still young, and implementing a GPU-based quantization scheme that *actually speeds up your model* is not straightforward. The main challenges stem from a lack of fast General Matrix Multiply (GEMM) GPU kernels for precisions lower than INT8, and the overheads associated with converting between floating point (FP) and Integer (INT) data types.
 
 In this blog, we provide a detailed guide to GPU-based quantization of transformers. We describe an approach that is both flexible and capable of genuinely improve throughput. The content is organized as follows:
 
