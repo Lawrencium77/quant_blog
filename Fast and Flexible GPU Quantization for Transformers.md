@@ -65,7 +65,7 @@ A key question is how to determine the clipping range. Too small, and we’ll ex
 
 While model parameters can always be quantized offline, its activations can be quantized **dynamically** (with the clipping range calculated for each activation during a forward pass) or **statically** (also offline). Static quantization involves running some forward passes, measuring the distribution of each activation in the network, and calculating the clipping range. This process is called **calibration**. For more information, see the next section.
 
-Dynamic quantization tends to be more accurate but requires additional computational overhead for online scalar calibration. As a result, **we only consider static quantization on GPU** because scalar reduction, relative to an INT8 matmul, can be costly and limit performance gains.
+Dynamic quantization tends to be more accurate but requires additional computational overhead for online scalar calibration. As a result, **we only consider static quantization on GPU** because scalar reduction (relative to an INT8 matmul) can be costly and limit performance gains.
 
 ### Quantization Granularity
 A final distinction to be made is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
