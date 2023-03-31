@@ -177,7 +177,7 @@ This might typically be a bias addition followed by an activation function (e.g.
 While there might not be a huge improvement from FP16 output in terms of GEMM throughput, there are other peformance benefits:
 - 50% less data loaded in the next kernel (now FP16 instead of INT32)
 - Avoid fusion of the dequantize operator with the next kernel
-- Avoid having to load the dequantize vector in the next kernel (which CUTLASS pipelines the loading of)
+- Avoid loading the dequantization vector in the next kernel (which CUTLASS pipelines the loading of)
 
 
 #### Memory layout
