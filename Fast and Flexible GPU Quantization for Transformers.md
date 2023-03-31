@@ -182,7 +182,7 @@ While there might not be a huge improvement from FP16 output in terms of GEMM th
 
 #### Memory layout
 
-Lastly we look at the effect of the afforementioned layout in memory on the matmul performance 
+Lastly we examine the effect of the aforementioned layout in memory on the matmul performance 
 
 |       Kernel       | Time (ms) | vs. FP16 |
 |:------------------:|:---------:|:--------:|
