@@ -164,7 +164,7 @@ We previously touched upon the fact that I32 return requires dequantizing outsid
 What if we require **per-channel** quantization i.e. using a vector to dequantize? In this scenario CUTLASS comes to the rescue by allowing the definition of a custom epilogue function, which is applied after the matrix multiplication, in a single fused kernel. For this scenario the GEMM + epilogue definition is expanded to 
 
 $$D=f_2(f_1(\alpha AB+\beta C, d)) $$
-The epilogue format comes from [`EpilogueWithBroadcast`](applies an elementwise function `f1` to the matmul output,) which applies a binary operation `f1` between the matmul output and a column-wise broadcasted vector `d`, followed by an optional elementwise op `f2`.
+The epilogue format comes from `EpilogueWithBroadcast` which applies a [binary operation](https://github.com/NVIDIA/cutlass/blob/master/include/cutlass/epilogue/thread/linear_combination_bias_elementwise.h#L215)`f1` between the matmul output and a column-wise broadcasted vector `d`, followed by an optional elementwise op `f2`.
 
 This might typically be a bias addition followed by an activation function (e.g. relu), but in our case we want `f1` to be a multiplication with the dequantize scalar. The epilogue is then plugged into `gemm::device::GemmUniversalWithBroadcast`.
 
