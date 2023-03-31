@@ -141,39 +141,55 @@ While `COL32` might be the most performant option, there exists a tension whereb
 
 We now look at some peformance numbers for the various flavours of INT8 GEMM. For these benchmarks we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions. A detailed guide to timing CUDA kernels with PyTorch can be found [here](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). Benchmarks were run on a T4 GPU with an input tensors of shape [2048, 1920] and [1920, 1920]. Whilst mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
 
+####  INT8 vs. INT32 output precision
 
-##### Output precision
-
-<INSERT GEMM DEFINITION>
+$$D=\alpha AB+\beta C$$
 
 One important factor which detemines the performance of an INT8 GEMM is the required output type. The matrix multiplication will always have INT8 (i8) dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output matrix C should be INT8 or INT32. 
 
-INT32 return type will be slower as 4 times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16/FP32. In comparison INT8 return type is faster, but there is a trade-off as accuracy will be impacted as we need to quantize the output from INT32 to INT8 (i.e. requantize) within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16/FP32 we will also have to dequantize, however if we require INT8 for the next kernel an INT8 output type can be ideal. In summary the choice is very much dependant on the accuracy/performance trade-off, as well as the specifics of the model architecture.
+INT32 return type will be slower as 4 times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16. In comparison INT8 return type is faster, but there is a trade-off as accuracy will be impacted as we need to quantize the output from INT32 to INT8 (i.e. requantize) within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 we will also have to dequantize, however if we require INT8 for the next kernel an INT8 output type can be ideal.
+
+In summary the choice is very much dependant on the accuracy/performance trade-off, as well as the specifics of the model architecture.
 
 |       Kernel       | Time (ms) | vs. FP16 |
 |:------------------:|:---------:|:--------:|
 | f16f16f16 (Torch)  |    600    |   1.0x   |
 | i8i8i32 (cuBLASLt) |    364    |   1.65x  |
-| i8i8i8 (cuBLASTLt) |    308    |   1.95x  |
+| i8i8i8 (cuBLASLt) |    308    |   1.95x  |
+
+#### FP16 output precision
+
+We previously touched upon the fact that I32 return requires dequantizing outside of the matmul. Performance could be improved by fusing the dequant with the matmul and returning FP16 outputs. We can get this behaviour for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize for INT8 outputs), but this only works if we are applying **per-tensor** quantization, where the dequantize parameter is a single scalar {refer to per-scalar/per-channel section for more detail}.
+
+What if we require **per-channel** quantization i.e. using a vector to dequantize? In this scenario CUTLASS comes to the rescue by allowing the definition of a custom epilogue function, which is applied after the matrix multiplication, in a single fused kernel. For this scenario the GEMM + epilogue definition is expanded to 
+
+$$D=f_2(f_1(\alpha AB+\beta C, d)) $$
+The epilogue format comes from [`EpilogueWithBroadcast`](applies an elementwise function `f1` to the matmul output,) which applies a binary operation `f1` between the matmul output and a column-wise broadcasted vector `d`, followed by an optional elementwise op `f2`.
+
+This might typically be a bias addition followed by an activation function (e.g. relu), but in our case we want `f1` to be a multiplication with the dequantize scalar. The epilogue is then plugged into `gemm::device::GemmUniversalWithBroadcast`.
+
+|       Kernel       | Time (ms) | vs. FP16 |
+|:------------------:|:---------:|:--------:|
+| f16f16f16 (Torch)  |    600    |   1.0x   |
+| i8i8i32 (CUTLASS) |    364    |   1.65x  |
+| i8i8f16 (CUTLASS) |    308    |   1.95x  |
+
+Whilst there might not be a huge improvement from FP16 output in terms of GEMM throughput, there are other peformance benefits:
+- 50% less data loaded in the next kernel (now FP16 instead of INT32)
+- Avoid fusion of the dequantize operator with the next kernel
+- Avoid having to load the dequantize vector in the next kernel (which CUTLASS pipelines the loading of)
 
 
+#### Memory layout
 
+Lastly we look at the effect of the afforementioned layout in memory on the matmul performance 
 
+|       Kernel       | Time (ms) | vs. FP16 |
+|:------------------:|:---------:|:--------:|
+| FP16 Row major (Torch)  |    600    |   1.0x   |
+| INT8 Row major  (cuBLASLt) |    365    |   1.64x  |
+| INT8 COL32 (cuBLASLt) |    308    |   1.95x  |
 
-
-- Torch fp16f16
-- CB i8i8
-- CB i8i8
-
-
-
-
-
-i32 vs i8 
-
-i32 vs f16
-
-##### Row major vs. COL32
 
 
 
