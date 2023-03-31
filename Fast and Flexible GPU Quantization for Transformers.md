@@ -150,13 +150,13 @@ One important factor which detemines the performance of an INT8 GEMM is the requ
 
 INT32 return type will be slower as 4 times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16/FP32. In comparison INT8 return type is faster, but there is a trade-off as accuracy will be impacted as we need to quantize the output from INT32 to INT8 (i.e. requantize) within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16/FP32 we will also have to dequantize, however if we require INT8 for the next kernel an INT8 output type can be ideal. In summary the choice is very much dependant on the accuracy/performance trade-off, as well as the specifics of the model architecture.
 
-```
 | Kernel | Time (ms) | vs. FP16 |
 | ----------- | ----------- |
 | f16f16f16 (Torch) | 600 | 1.0x |
 | i8i8i32 (cuBLASLt) | 364 | 1.65x |
 | i8i8i8 (cuBLASLt) | 308 | 1.95x |
-```
+
+
 
 
 
