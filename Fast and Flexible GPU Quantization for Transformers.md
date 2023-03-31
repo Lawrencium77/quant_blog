@@ -159,7 +159,7 @@ In summary, the decision is very much dependent on the accuracy/performance trad
 
 #### FP16 output precision
 
-We previously touched upon the fact that I32 return type requires dequantizing outside of the matmul. Performance could be improved by fusing the dequant with the matmul and returning FP16 outputs. We can get this behaviour for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize for INT8 outputs), but this only works if we are applying **per-tensor** quantization, where the dequantize parameter is a single scalar {refer to per-scalar/per-channel section for more detail}.
+We previously touched upon the fact that INT32 return type requires dequantizing outside of the matmul. Performance could be improved by fusing the dequant with the matmul and returning FP16 outputs. We can get this behaviour for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize for INT8 outputs), but this only works if we are applying **per-tensor** quantization, where the dequantization parameter is a single scalar {refer to per-scalar/per-channel section for more detail}.
 
 What if we require **per-channel** quantization i.e. using a vector to dequantize? In this scenario CUTLASS comes to the rescue by allowing the definition of a custom epilogue function, which is applied after the matrix multiplication, in a single fused kernel. For this scenario the GEMM + epilogue definition is expanded to 
 
