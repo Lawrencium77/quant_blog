@@ -147,7 +147,7 @@ $$D=\alpha AB+\beta C$$
 
 One important factor which determines INT8 GEMM performance (formula above) is the required output type. The matrix multiplication will always have INT dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output C should be INT8 or INT32. 
 
-INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16. In comparison INT8 return type is faster, but there is a trade-off as accuracy will be impacted as we need to re-quantize the output from INT32 to INT8 within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 input we will also have to dequantize, however if we require INT8 for the next kernel an INT8 output type can be ideal.
+INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16. In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 input we will also have to dequantize. However, if we require INT8 for the next kernel an INT8 output type can be ideal.
 
 In summary the decision is very much dependant on the accuracy/performance trade-off, as well as the specifics of the model architecture.
 
