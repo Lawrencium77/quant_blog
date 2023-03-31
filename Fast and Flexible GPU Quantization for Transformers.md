@@ -82,7 +82,7 @@ In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operatio
 
 While they are not currently supported natively in PyTorch, there are other libraries available such as **torch-int** (SmoothQuant) and **bitsandbytes** (LLM.int8()) which expose Python bindings to the underlying C/C++ calls. Microsoft's **ZeroQuant** also leverages CUTLASS but wrappers for their INT8 kernels have not yet been open sourced.
 
-TODO: talk about downside of these libs (i.e. not performant, don't hide overheads)
+TODO: talk about downside of these libs (i.e. not performant, don't hide overheads) and maybe trim down the following paragraphs
 
 Fully fledged inference frameworks such as NVidia's **TensorRT** or **FasterTransformer** can potentially make things simpler, as they handle the complexity around fusing the quant / dequant to the adjacent operators. This can be a particularly attractive option if you are interested in common Transformer types such as BERT and GPT, for which they have been heavily optimised. However, for anything more exotic it can be a challenge to reach the same levels of performance when factoring in the hard assumptions these libraries make.
 
@@ -114,7 +114,7 @@ While these options are already faster than FP16, to absolutely maximize perform
 #### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
 ![](_attachments/Pasted%20image%2020230329111522.png)
 
-### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
+#### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
 ![](_attachments/Pasted%20image%2020230329111707.png)
 
 By zooming in (4 rows, 16 columns) we hopefully get a clearer picture of the layout pattern
@@ -131,10 +131,56 @@ By zooming in (4 rows, 16 columns) we hopefully get a clearer picture of the lay
 #### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
 ![](_attachments/Pasted%20image%2020230329113436.png)
 
-### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
+#### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
 ![](_attachments/Pasted%20image%2020230329113458.png)
 
-While `COL32` might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains, and so must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
+While `COL32` might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains from the reduced precision matmul. Therefore we must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
+
+
+### INT8 GEMM Benchmarking
+
+We now look at some peformance numbers for the various flavours of INT8 GEMM. For these benchmarks we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions. A detailed guide to timing CUDA kernels with PyTorch can be found [here](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). Benchmarks were run on a T4 GPU with an input tensors of shape [2048, 1920] and [1920, 1920]. Whilst mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
+
+
+##### Output precision
+
+<INSERT GEMM DEFINITION>
+
+One important factor which detemines the performance of an INT8 GEMM is the required output type. The matrix multiplication will always have INT8 (i8) dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output matrix C should be INT8 or INT32. 
+
+INT32 return type will be slower as 4 times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16/FP32. In comparison INT8 return type is faster, but there is a trade-off as accuracy will be impacted as we need to quantize the output from INT32 to INT8 (i.e. requantize) within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16/FP32 we will also have to dequantize, however if we require INT8 for the next kernel an INT8 output type can be ideal. In summary the choice is very much dependant on the accuracy/performance trade-off, as well as the specifics of the model architecture.
+
+```
+| Kernel | Time (ms) | vs. FP16 |
+| ----------- | ----------- |
+| f16f16f16 (Torch) | 600 | 1.0x |
+| i8i8i32 (cuBLASLt) | 364 | 1.65x |
+| i8i8i8 (cuBLASLt) | 308 | 1.95x |
+```
+
+
+
+
+- Torch fp16f16
+- CB i8i8
+- CB i8i8
+
+
+
+
+
+i32 vs i8 
+
+i32 vs f16
+
+##### Row major vs. COL32
+
+
+
+
+
+
+
 
 ### Fusion Strategy (and diagrams)
 
