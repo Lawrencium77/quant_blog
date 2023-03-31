@@ -145,11 +145,11 @@ We now look at some peformance numbers for the various flavours of INT8 GEMM. Fo
 
 $$D=\alpha AB+\beta C$$
 
-One important factor which detemines the performance of an INT8 GEMM is the required output type. The matrix multiplication will always have INT8 (i8) dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output matrix C should be INT8 or INT32. 
+One important factor which detemines the performance of an INT8 GEMM (formula above) is the required output type. The matrix multiplication will always have INT dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output matrix C should be INT8 or INT32. 
 
-INT32 return type will be slower as 4 times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16. In comparison INT8 return type is faster, but there is a trade-off as accuracy will be impacted as we need to quantize the output from INT32 to INT8 (i.e. requantize) within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 we will also have to dequantize, however if we require INT8 for the next kernel an INT8 output type can be ideal.
+INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16. In comparison INT8 return type is faster, but there is a trade-off as accuracy will be impacted as we need to re-quantize the output from INT32 to INT8 within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 input we will also have to dequantize, however if we require INT8 for the next kernel an INT8 output type can be ideal.
 
-In summary the choice is very much dependant on the accuracy/performance trade-off, as well as the specifics of the model architecture.
+In summary the decision is very much dependant on the accuracy/performance trade-off, as well as the specifics of the model architecture.
 
 |       Kernel       | Time (ms) | vs. FP16 |
 |:------------------:|:---------:|:--------:|
@@ -159,7 +159,7 @@ In summary the choice is very much dependant on the accuracy/performance trade-o
 
 #### FP16 output precision
 
-We previously touched upon the fact that I32 return requires dequantizing outside of the matmul. Performance could be improved by fusing the dequant with the matmul and returning FP16 outputs. We can get this behaviour for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize for INT8 outputs), but this only works if we are applying **per-tensor** quantization, where the dequantize parameter is a single scalar {refer to per-scalar/per-channel section for more detail}.
+We previously touched upon the fact that I32 return type requires dequantizing outside of the matmul. Performance could be improved by fusing the dequant with the matmul and returning FP16 outputs. We can get this behaviour for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize for INT8 outputs), but this only works if we are applying **per-tensor** quantization, where the dequantize parameter is a single scalar {refer to per-scalar/per-channel section for more detail}.
 
 What if we require **per-channel** quantization i.e. using a vector to dequantize? In this scenario CUTLASS comes to the rescue by allowing the definition of a custom epilogue function, which is applied after the matrix multiplication, in a single fused kernel. For this scenario the GEMM + epilogue definition is expanded to 
 
