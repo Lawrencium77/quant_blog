@@ -139,7 +139,7 @@ While `COL32` might be the most performant option, there exists a tension whereb
 
 ### INT8 GEMM Benchmarking
 
-We now look at some peformance numbers for the various flavours of INT8 GEMM. For these benchmarks we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions. A detailed guide to timing CUDA kernels with PyTorch can be found [here](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). Benchmarks were run on a T4 GPU with an input tensors of shape [2048, 1920] and [1920, 1920]. Whilst mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
+We now look at peformance numbers for the various flavours of INT8 GEMM. For these benchmarks we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions. A detailed guide to timing CUDA kernels with PyTorch can be found [here](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
 
 ####  INT8 vs. INT32 output precision
 
