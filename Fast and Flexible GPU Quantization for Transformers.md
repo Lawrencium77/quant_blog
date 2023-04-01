@@ -20,14 +20,13 @@ In this blog, we provide a detailed guide to GPU-based quantization of transform
 * [Background](#Background)
 	* [The Quantization Equation](#The%20Quantization%20Equation)
 	* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
-	* [Quantization Granularity](#Quantization%20Granularity)
-* [Important Concepts](#Important%20Concepts)
 	* [Calibration](#Calibration)
-	* [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
-		* [i8f16](#i8f16)
-		* [i8i8](#i8i8)
-		* [Quantization Operation Overheads](#Quantization%20Operation%20Overheads)
-	* [SmoothQuant](#SmoothQuant)
+	* [Quantization Granularity](#Quantization%20Granularity)
+* [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
+	* [i8f16](#i8f16)
+	* [i8i8](#i8i8)
+	* [Quantization Operation Overheads](#Quantization%20Operation%20Overheads)
+* [SmoothQuant](#SmoothQuant)
 * [Implementation](#Implementation)
 	* [GPU Quantization in Practice](#GPU%20Quantization%20in%20Practice)
 	* [Memory Layouts](#Memory%20Layouts)
@@ -36,7 +35,6 @@ In this blog, we provide a detailed guide to GPU-based quantization of transform
 	* [Accuracy](#Accuracy)
 	* [Throughput](#%20Throughput)
 * [References](#References)
-
 
 
 ## Background
@@ -65,25 +63,13 @@ It's important to note that the rounding function in Equation (1) incurs a loss 
 ### Dynamic vs Static Quantization
 A key question is how to determine the clipping range. Too small, and we’ll excessively “truncate” activations and weights. Too big, and we’ll lose precision.
 
-While model parameters can always be quantized offline, its activations can be quantized **dynamically** (with the clipping range calculated for each activation during a forward pass) or **statically** (also offline). Static quantization involves running some forward passes, measuring the distribution of each activation in the network, and calculating the clipping range. This process is called **calibration**. For more information, see the next section.
+While model parameters can always be quantized offline, its activations can be quantized **dynamically** (with the clipping range calculated for each activation during a forward pass) or **statically** (also offline). 
 
 Dynamic quantization tends to be more accurate but requires additional computational overhead for online scalar calibration. As a result, **we only consider static quantization on GPU** because scalar reduction (relative to an INT8 matmul) can be costly and limit performance gains.
 
-### Quantization Granularity
-A final distinction to be made is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
-
-![](_attachments/Pasted%20image%2020230313162138.png)
-
-The simplest approach is to use the same scale factor for all elements of $W$ (and likewise for $X$). This is known as **per-tensor** quantization.
-
-It’s also feasible to share quantization parameters between some subgroups of each input matrix. A popular option is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**. This is more accurate than per-tensor quantization; using a specific scale means the error incurred in quantizing each column is lower. 
-
-## Important Concepts
-With the fundamentals of quantization covered, let's explore the important concepts in its implementation.
-
 ### Calibration
 
-Calibration, as mentioned above, involves obtaining activation quantization parameters by passing several batches of data through the model to measure activation distribution.
+Static quantization involves obtaining activation quantization parameters by passing several batches of data through the model to measure activation distribution. This process is called **calibration**. 
 
 There are multiple methods to derive a clipping range from these activations, such as:
 
@@ -95,7 +81,19 @@ We found that the final approach was most performant (although this may vary for
 
 To perform the calibration process, we used TensorRT’s PyTorch Quantization Toolkit [5]. While useful, we recognise that this code is not regularly maintained. Another approach is to use PyTorch's `QuantStub` and `DeQuantStub()` nodes. [PyTorch 2.0's quantization](https://pytorch.org/docs/stable/quantization.html) is currently in beta but may be useful going forwards.
 
-### Specifics of  INT8 GEMMs
+
+### Quantization Granularity
+A final distinction to be made is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
+
+![](_attachments/Pasted%20image%2020230313162138.png)
+
+The simplest approach is to use the same scale factor for all elements of $W$ (and likewise for $X$). This is known as **per-tensor** quantization.
+
+It’s also feasible to share quantization parameters between some subgroups of each input matrix. A popular option is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**. This is more accurate than per-tensor quantization; using a specific scale means the error incurred in quantizing each column is lower. 
+
+
+## Specifics of  INT8 GEMMs
+
 The core element of a quantized neural network is INT8 matrix multiplication. Focusing on its details is crucial for an efficient implementation. This section describes these details, and serves as context for the later section describing [Implementation](#Implementation).
 
 We identify two types of INT8 matmul, differentiated by their return type. We'll discuss each of these in turn.
@@ -138,7 +136,7 @@ In i8f16, we see the DQ is fused with the matrix multiply itself. This ensures t
 In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ is fused with the bias add, as well as any ops that might follow (for example, a residual add).
 
 
-### SmoothQuant
+## SmoothQuant
 In this section, we give an intuition behind SmoothQuant - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
 
 The authors describe two key observations that motivate SmoothQuant:
