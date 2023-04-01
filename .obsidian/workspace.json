@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "9ccdbca4f0cfc40c",
+        "id": "9f47675006fe27f3",
         "type": "tabs",
         "children": [
           {
-            "id": "ee5cdbea27a8e988",
+            "id": "134d73fcf135dc5b",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -20,18 +20,19 @@
             }
           },
           {
-            "id": "2cede6a15db4edea",
+            "id": "b40f595d935c9700",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "applies.md",
+                "file": "Fast and Flexible GPU Quantization for Transformers.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -81,7 +82,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 381.5,
+    "collapsed": true
   },
   "right": {
     "id": "8bd067abbbfdbde5",
@@ -158,20 +160,21 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "ee5cdbea27a8e988",
+  "active": "b40f595d935c9700",
   "lastOpenFiles": [
-    "applies.md",
+    "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
+    "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
+    "_attachments/Mode 1 GEMM (2).svg",
+    "_attachments/Mode 1 GEMM (1).svg",
+    "_attachments/Blank diagram (4).svg",
+    "_attachments/Blank diagram (2).svg",
+    "_attachments/Blank diagram (1).svg",
     "Fast and Flexible GPU Quantization for Transformers.md",
-    "Pasted image 20230331133205.png",
-    "Pasted image 20230331114349.png",
-    "_attachments/Pasted image 20230329111413.png",
     "_attachments/Pasted image 20230329113458.png",
     "_attachments/Pasted image 20230329113436.png",
     "_attachments/Pasted image 20230329113410.png",
     "_attachments/Pasted image 20230329113209.png",
-    "_attachments/Pasted image 20230329113112.png",
-    "_attachments/Pasted image 20230329111836.png",
-    "_attachments/Pasted image 20230329111707.png",
+    "i8f16.md",
     "README.md",
     "_attachments"
   ]

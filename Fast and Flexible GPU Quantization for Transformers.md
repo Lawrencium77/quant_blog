@@ -48,7 +48,7 @@ In principle, we can use any function to convert from a higher-precision to lowe
 
 $$Q(r)=\textrm{Int}(r/S)-Z$$
 
-Here, $Q, r$ are the INT output and FP input, while $S, Z$ are a scale factor and bias. To minimize inference cost, we can set $Z=0$ (we do this for our GPU implementation).
+Here, $Q, r$ are the INT output and FP input, while $S, Z$ are a scale factor and bias. $\textrm{Int}$ is a function that rounds to the nearest integer. To minimize inference cost, we can set $Z=0$ (we do this for our GPU implementation). 
 
 The corresponding dequantization equation is even simpler:
 
@@ -59,6 +59,8 @@ This method is called **uniform quantization** since the quantized values are un
 $$S=\frac{\beta-\alpha}{2^b-1}$$
 
 Here, $b$ is the number of bits in our quantization scheme. We choose to enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization function by setting $Z=0$.
+
+It's important to note that the rounding function in Equation (1) incurs a loss of information. In general, $\tilde{r}=SQ(r)\not = r$.  The value $\tilde{r}-r$ is called **quantization error**.
 
 ### Dynamic vs Static Quantization
 A key question is how to determine the clipping range. Too small, and we’ll excessively “truncate” activations and weights. Too big, and we’ll lose precision.
@@ -74,7 +76,7 @@ A final distinction to be made is how we quantization parameters are shared betw
 
 The simplest approach is to use the same scale factor for all elements of $W$ (and likewise for $X$). This is known as **per-tensor** quantization.
 
-It’s also feasible to share quantization parameters between some subgroups of each input matrix. A popular options is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**.
+It’s also feasible to share quantization parameters between some subgroups of each input matrix. A popular option is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**. This is more accurate than per-tensor quantization; using a specific scale means the error incurred in quantizing each column is lower. 
 
 ## Important Concepts
 With the fundamentals of quantization covered, let's explore the important concepts in its implementation.
