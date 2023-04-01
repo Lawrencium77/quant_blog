@@ -98,42 +98,43 @@ The core element of a quantized neural network is INT8 matrix multiplication. Fo
 
 We identify two types of INT8 matmul, differentiated by their return type. We'll discuss each of these in turn.
 
-#### i8f16
+#### i8i32
 Consider the following matrix multiplication:
 
-$$Y=WX+b$$
+$$Y=WX$$
 
-where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$, $b\in \mathbb{R}^{d}$  are the input, weight, output, and bias tensors respectively. Consider the case where all tensors are **Floating Point**, but the matrix multiply itself runs in INT8. An example INT8 to FP16 (i8f16) matrix multiplication would be implemented as follows:
+where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$  are the input, weight, and output  tensors respectively. We omit a bias for simplicity. Consider the case where all tensors are **Floating Point**, but the matrix multiply runs in INT8. An INT8 to INT32 (i8i32) matrix multiplication is implemented as follows:
 
-![](_attachments/Mode%201%20GEMM%20(1).svg)
+![](_attachments/Mode%201%20GEMM%20(3)%201.svg)
+
+The arrows indicate a data transfer with dtype given by their colour. The square boxes indicate operations, with dtype of the return variable also given by their colour.
 
 There are several points to note:
 
 * The input $X$ first passes through a quantization operation, labelled Q. This performs the operation described in Equation (1).
 * Our weights $W$ can be quantized offline. 
-* The output of the Matmul has **INT32** dtype. The structure used to contain this output is called the **accumulator**. The accumulator value is passed through a dequantization op, labelled DQ. This performs the operation described in Equation (2).
-* The bias step is not quantized.
+* The output of the Matmul has **INT32** dtype. The structure used to contain this output is called the **accumulator**. The accumulator value is passed through a dequantization op, labelled DQ. This performs the operation described in Equation (2), and returns in FP16.
 
-Multiplication of two signed INT8 numbers can be represented by in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
+Multiplication of two signed INT8 numbers can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
 
 #### i8i8
 Returning in INT8 involves an extra step:
 
-![](_attachments/Blank%20diagram%20(1).svg)
+![](_attachments/Mode%202%20GEMM.svg)
 
 In this **requantization** step, labelled RQ, we convert the INT32 representation back into INT8. The benefit is a reduction in the amount of data written from GPU SRAM to DRAM.
 
 #### Quantization Operation Overheads
 To fully realise the throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html). 
-The following diagrams demonstrate this for i8f16 and i8i8. Fused operators are indicated by the dashed boxes:
+The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
-![](_attachments/Mode%201%20GEMM%20(2).svg)
+![](Mode%201%20GEMM%20(4).svg)
 
-![](_attachments/Blank%20diagram%20(2).svg)
+![](Mode%202%20GEMM%20(1).svg)
 
-In both cases, the Q node can sometimes be fused with a preceding operation (usually a layernorm). 
-In i8f16, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
-In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ is fused with the bias add, as well as any ops that might follow (for example, a residual add).
+In both cases, the Q node can sometimes be fused with a preceding operation, in this case a layernorm. 
+In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
+In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add).
 
 
 ## SmoothQuant
