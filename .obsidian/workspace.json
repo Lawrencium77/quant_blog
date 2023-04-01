@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "9f47675006fe27f3",
+        "id": "ddaa3431bd42a0b5",
         "type": "tabs",
         "children": [
           {
-            "id": "134d73fcf135dc5b",
+            "id": "4d77629c15afdb32",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -18,21 +18,8 @@
                 "source": false
               }
             }
-          },
-          {
-            "id": "b40f595d935c9700",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Fast and Flexible GPU Quantization for Transformers.md",
-                "mode": "preview",
-                "source": false
-              }
-            }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -82,8 +69,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 381.5,
-    "collapsed": true
+    "width": 381.5
   },
   "right": {
     "id": "8bd067abbbfdbde5",
@@ -160,20 +146,19 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "b40f595d935c9700",
+  "active": "4d77629c15afdb32",
   "lastOpenFiles": [
-    "_attachments/Mode 2 GEMM (1).svg",
-    "_attachments/Mode 1 GEMM (4).svg",
-    "_attachments/Mode 2 GEMM.svg",
-    "_attachments/Mode 1 GEMM (3) 1.svg",
     "Mode 1 GEMM (3).svg",
+    "Fast and Flexible GPU Quantization for Transformers.md",
     "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
     "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
+    "_attachments/Mode 2 GEMM.svg",
+    "_attachments/Mode 2 GEMM (1).svg",
+    "_attachments/Mode 1 GEMM (4).svg",
+    "_attachments/Mode 1 GEMM (3) 1.svg",
     "_attachments/Mode 1 GEMM (2).svg",
     "_attachments/Mode 1 GEMM (1).svg",
     "_attachments/Blank diagram (4).svg",
-    "_attachments/Blank diagram (2).svg",
-    "Fast and Flexible GPU Quantization for Transformers.md",
     "i8f16.md",
     "README.md",
     "_attachments"

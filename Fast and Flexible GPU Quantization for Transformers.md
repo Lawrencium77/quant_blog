@@ -128,9 +128,9 @@ In this **requantization** step, labelled RQ, we convert the INT32 representatio
 To fully realise the throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html). 
 The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
-![](Mode%201%20GEMM%20(4).svg)
+![](_attachments/Mode%201%20GEMM%20(4).svg)
 
-![](Mode%202%20GEMM%20(1).svg)
+![](_attachments/Mode%202%20GEMM%20(1).svg)
 
 In both cases, the Q node can sometimes be fused with a preceding operation, in this case a layernorm. 
 In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
