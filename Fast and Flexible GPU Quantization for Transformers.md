@@ -31,9 +31,6 @@ In this blog, we provide a detailed guide to GPU-based quantization of transform
 	* [GPU Quantization in Practice](#GPU%20Quantization%20in%20Practice)
 	* [Memory Layouts](#Memory%20Layouts)
 	* [Fusion Strategy (and diagrams)](#Fusion%20Strategy%20(and%20diagrams))
-* [Some Brief Results](#Some%20Brief%20Results)
-	* [Accuracy](#Accuracy)
-	* [Throughput](#%20Throughput)
 * [References](#References)
 
 
@@ -194,7 +191,8 @@ In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operatio
 
 While they are not currently supported natively in PyTorch, there are other libraries available such as **torch-int** (SmoothQuant) and **bitsandbytes** (LLM.int8()) which expose Python bindings to the underlying C/C++ calls. Microsoft's **ZeroQuant** also leverages CUTLASS but wrappers for their INT8 kernels have not yet been open sourced.
 
-TODO: talk about downside of these libs (i.e. not performant, don't hide overheads) and maybe trim down the following paragraphs
+> [! TODO] 
+> Talk about downside of these libs (i.e. not performant, don't hide overheads) and maybe trim down the following paragraphs
 
 Fully fledged inference frameworks such as NVidia's **TensorRT** or **FasterTransformer** can potentially make things simpler, as they handle the complexity around fusing the quant / dequant to the adjacent operators. This can be a particularly attractive option if you are interested in common Transformer types such as BERT and GPT, for which they have been heavily optimised. However, for anything more exotic it can be a challenge to reach the same levels of performance when factoring in the hard assumptions these libraries make.
 
@@ -311,10 +309,6 @@ Lastly we examine the effect of the aforementioned layout in memory on the matmu
 
 
 ### Fusion Strategy (and diagrams)
-
-## Some Brief Results
-### Accuracy
-### Throughput
 
 ## References
 Section 0: Intro
