@@ -93,7 +93,7 @@ There are multiple methods to derive a clipping range from these activations, su
 
 We found that the final approach was most performant (although this may vary for different models).
 
-To perform the calibration process, we recommend using TensorRT’s PyTorch Quantization Toolkit [5]. 
+To perform the calibration process, we used TensorRT’s PyTorch Quantization Toolkit [5]. While useful, we recognise that this code is not regularly maintained. Another approach is to use PyTorch's `QuantStub` and `DeQuantStub()` nodes. [PyTorch 2.0's quantization](https://pytorch.org/docs/stable/quantization.html) is currently in beta but may be useful going forwards.
 
 ### Specifics of  INT8 GEMMs
 The core element of a quantized neural network is INT8 matrix multiplication. Focusing on its details is crucial for an efficient implementation. This section describes these details, and serves as context for the later section describing [Implementation](#Implementation).
