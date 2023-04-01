@@ -44,7 +44,7 @@ In this blog, we provide a detailed guide to GPU-based quantization of transform
 We’ll begin with a quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [References](#References) section [1-4].
 
 ### The Quantization Equation
-In principle, we can use any function to map between FP and INT values. But a linear function is simplest and quickest on the hardware [4]:
+In principle, we can use any function to convert from a higher-precision to lower-precision representation. But a linear function is simplest and quickest on the hardware [4]:
 
 $$Q(r)=\textrm{Int}(r/S)-Z$$
 
