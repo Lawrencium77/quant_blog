@@ -1,5 +1,5 @@
 ## Introduction
-As transformer models increase in size, the computational (and therefore financial) cost of running inference also grows. Many companies now face the challenge of deploying state-of-the-art models in a cost-effective way.
+As transformer models increase in size, the computational cost of running inference also grows. Many companies now face the challenge of deploying state-of-the-art models in a cost-effective way.
 
 This has led to a surge in interest for optimizing transformer inference. There are a range of techniques available [1], including:
 
