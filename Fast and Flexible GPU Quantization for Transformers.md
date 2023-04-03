@@ -30,7 +30,7 @@ In this blog, we provide a detailed guide to GPU-based quantization of transform
 * [Implementation](#Implementation)
 	* [GPU Quantization in Practice](#GPU%20Quantization%20in%20Practice)
 	* [Memory Layouts](#Memory%20Layouts)
-	* [Fusion Strategy (and diagrams)](#Fusion%20Strategy%20(and%20diagrams))
+	* [Fusion Implementation](#Fusion%20Implementation)
 * [References](#References)
 
 
@@ -301,14 +301,87 @@ Lastly we examine the effect of the aforementioned layout in memory on the matmu
 | INT8 COL32 (cuBLASLt) |    308    |   1.95x  |
 
 
+### Fusion Implementation
+As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. 
 
+We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton). This section provides a short example. Consider the following code:
 
+```python
+"""
+Example Triton kernel that implements fused Layenorm + Quantization.
+Also performs layout conversion from row-major to COL32.
+The kernel code is adapted from the Triton Lang tutorial.
+See https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html
+"""
+import triton
+import triton.language as tl
 
+@triton.jit
+def layernorm_Q(
+	Input,
+	Output,
+	Weight,
+	Bias,
+	quant_scale,
+	stride, # Stride between rows
+	M, # Number of rows
+	N, # Number of columns
+	eps: tl.constexpr,
+	BLOCK_SIZE: tl.constexpr,
+):
+	stride_out = 32 # Because COL32
 
+	# Position of elements processed by this program
+	row = tl.program_id(0)
+	Output += row * stride_out
+	Input += row * stride
 
+	# Compute mean
+	mean = 0
+	_mean = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+	for off in range(0, N, BLOCK_SIZE):
+		cols = off + tl.arange(0, BLOCK_SIZE)
+		a = tl.load(Input + cols, mask=cols < N, other=0.0,    eviction_policy="evict_last").to(tl.float32)
+		_mean += a
+		mean = tl.sum(_mean, axis=0) / N
 
+	# Compute variance
+	_var = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+	for off in range(0, N, BLOCK_SIZE):
+		cols = off + tl.arange(0, BLOCK_SIZE)
+		a = tl.load(Input + cols, mask=cols < N, other=0.0, eviction_policy="evict_last").to(tl.float32)
+		a = tl.where(cols < N, a - mean, 0.0)
+		_var += a * a
+		var = tl.sum(_var, axis=0) / N
+		rstd = 1 / tl.sqrt(var + eps)
 
-### Fusion Strategy (and diagrams)
+	# Get quantization clamps
+	pos_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) + 127
+	neg_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) - 127
+
+	for off in range(0, N, BLOCK_SIZE):
+
+		# Multiply by weight, and add bias
+		cols = off + tl.arange(0, BLOCK_SIZE)
+		mask = cols < N
+		weight = tl.load(Weight + cols, mask=mask)
+		bias = tl.load(Bias + cols, mask=mask)
+		a = tl.load(Input + cols, mask=mask, other=0.0, eviction_policy="evict_first").to(tl.float32)
+		a_hat = (a - mean) * rstd
+		y = a_hat * weight + bias
+	
+		# Quantize
+		out = _quant(y, quant_scale, pos_clamps, neg_clamps) # _quant defined elsewhere
+	
+		# Pointer arithmetic for Row-major --> COL32	
+		cols_out = cols // stride_out * (stride_out * M) + (cols % stride_out)
+		
+		# Store output
+		tl.store(Output + cols_out, out, mask=mask)
+```
+
+This describes a fused Layernorm & Quantization operation. The kernel also converts data layout from Row-major to COL32, so the output can be passed to a cuBLASLt i8i8 GEMM kernel. For simplicity, we have omitted the helper function that enqueues the above kernel.   
+
 
 ## References
 Section 0: Intro
