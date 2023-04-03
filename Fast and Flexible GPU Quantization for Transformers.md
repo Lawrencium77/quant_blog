@@ -360,7 +360,6 @@ def layernorm_Q(
 	neg_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) - 127
 
 	for off in range(0, N, BLOCK_SIZE):
-
 		# Multiply by weight, and add bias
 		cols = off + tl.arange(0, BLOCK_SIZE)
 		mask = cols < N
