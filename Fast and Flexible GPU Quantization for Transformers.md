@@ -306,7 +306,7 @@ Lastly we examine the effect of the aforementioned layout in memory on the matmu
 The arrival of Nvidia's Hopper/Lovelace architecture brought with it support for a new floating point datatype - FP8. This is available in two flavours:
 
 - **E5M2** - 5 exponent bits and 2 mantissa bits - larger dynamic range
-- **E4M3** - 4 exponent bits and 3 mantissa bits - higher precision around zero
+- **E4M3** - 4 exponent bits and 3 mantissa bits - higher precision 
 
 > Insert image here
 
