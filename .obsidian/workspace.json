@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "ddaa3431bd42a0b5",
+        "id": "442f0fb23a2951e7",
         "type": "tabs",
         "children": [
           {
-            "id": "4d77629c15afdb32",
+            "id": "28d6e13bd56850e2",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
                 "file": "Fast and Flexible GPU Quantization for Transformers.md",
-                "mode": "preview",
+                "mode": "source",
                 "source": false
               }
             }
@@ -48,7 +48,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "fp8",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -65,11 +65,12 @@
               "state": {}
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
-    "width": 381.5
+    "width": 300
   },
   "right": {
     "id": "8bd067abbbfdbde5",
@@ -146,10 +147,8 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "4d77629c15afdb32",
+  "active": "28d6e13bd56850e2",
   "lastOpenFiles": [
-    "Mode 1 GEMM (3).svg",
-    "Fast and Flexible GPU Quantization for Transformers.md",
     "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
     "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
     "_attachments/Mode 2 GEMM.svg",
@@ -159,7 +158,10 @@
     "_attachments/Mode 1 GEMM (2).svg",
     "_attachments/Mode 1 GEMM (1).svg",
     "_attachments/Blank diagram (4).svg",
-    "i8f16.md",
+    "_attachments/Blank diagram (2).svg",
+    "_attachments/Blank diagram (1).svg",
+    "applies.md",
+    "Fast and Flexible GPU Quantization for Transformers.md",
     "README.md",
     "_attachments"
   ]
