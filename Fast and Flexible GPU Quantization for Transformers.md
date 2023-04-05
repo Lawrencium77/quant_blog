@@ -312,13 +312,13 @@ The arrival of Nvidia's Hopper/Lovelace architecture brought with it support for
 
 There are potential benefits to choosing FP8 as our quanitzation format from both an accuracy and performance perspective:
 
-###### Data distribution alignment
+##### Data distribution alignment
 When quantizing from FP16 to INT8 we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed, with more density around zero. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution.  Research already suggests that we can remove/reduce the need for QAT (have we already defined this?) by using FP8 over INT8 (reference https://arxiv.org/abs/2208.09225 and https://arxiv.org/abs/2209.05433).
 
 ##### FP8 Training
 Quantization aware training results in train time slowdown and approximate graidents with fake quantization layers. FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training, and the prospect of less intrusive calibration by matching train/test time precisions.
 
-###### cuBLASLt API
+##### cuBLASLt API
 Although FP8 tensor cores have the same theoretical throughput as INT8, changes to the `cublasLtMatmul` API for FP8 means we can avoid a lot of the pain associated with achieving peak 8-bit performance. Specifically we can now consider the matmuls in isolation without having to apply fusions with adjacents operations 
 - Input requires Row Major ([TN](https://docs.nvidia.com/cuda/cublas/index.html#cublasltmatmul)) memory layout rather than COL32 - so we can bypass this conversion overhead 
 - The [GEMM API](https://docs.nvidia.com/cuda/cublas/index.html#bit-floating-point-data-types-fp8-usage) now accepts additional scalars which are multiplied with the input/output tensors, which can be used to fuse quantize/dequantize with the matmul itself
