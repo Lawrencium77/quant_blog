@@ -310,7 +310,7 @@ The arrival of Nvidia's Hopper/Lovelace architecture brings with it support for 
 
 > Insert image here
 
-There are potential benefits to choosing FP8 as our quanitzation format from both an accuracy and performance perspective:
+There are potential benefits to choosing FP8 as our quantization format from both an accuracy and performance perspective:
 
 ##### Data distribution alignment
 When quantizing from FP16 to INT8 we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed, with more density around zero. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution.  Research already suggests that we can remove/reduce the need for QAT (have we already defined this?) by using FP8 over INT8 (reference https://arxiv.org/abs/2208.09225 and https://arxiv.org/abs/2209.05433).
