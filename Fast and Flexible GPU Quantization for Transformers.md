@@ -27,6 +27,7 @@ We describe an approach to GPU-based quantization of transformers that is both *
 	* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
 	* [Calibration](#Calibration)
 	* [Quantization Granularity](#Quantization%20Granularity)
+	* [Quantization-Aware Training](#Quantization-Aware%20Training)
 * [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
 	* [i8i32](#i8i32)
 	* [i8i8](#i8i8)
@@ -85,13 +86,18 @@ To perform the calibration process, we used TensorRT’s PyTorch Quantization To
 
 
 ### Quantization Granularity
-A final distinction to be made is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
+Another important detail is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
 
 ![](_attachments/Pasted%20image%2020230313162138.png)
 
 The simplest approach is to use the same scale factor for all elements of $W$ (and likewise for $X$). This is known as **per-tensor** quantization.
 
 It’s also feasible to share quantization parameters between some subgroups of each input matrix. A popular option is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**. This is more accurate than per-tensor quantization; using a specific scale means the error incurred in quantizing each column is lower. 
+
+### Quantization-Aware Training
+The final distinction we must understand is that between **Post-Training Quantization** (PTQ) and **Quantization-Aware Training** (QAT). 
+
+The motivation behind QAT is simple: can we finetune our model to better deal with error introduced by quantization? The following diagram 
 
 
 ## Specifics of  INT8 GEMMs
