@@ -1,5 +1,5 @@
 ## Introduction
-As transformer models increase in size, the computational cost of running inference also grows. Many companies now face the challenge of deploying state-of-the-art models in a cost-effective way.
+As transformer models increase in size, the computational cost of running inference also grows. Many organisations now face the challenge of deploying state-of-the-art models in a cost-effective way.
 
 This has led to a surge in interest for optimizing transformer inference. There are a range of techniques available [1], including:
 
@@ -9,21 +9,26 @@ This has led to a surge in interest for optimizing transformer inference. There 
 * Knowledge Distillation
 * Quantization
 
-Of these, quantization is in some sense the most universal. It can be applied to any network, regardless of architecture.
+Of these, quantization is perhaps the most universal. It can be applied to any network, without changing model architecture or shape.
 
-By reducing the precision of model parameters and activations, quantization aims to minimize increase throughput and decrease memory footprint, at the cost of potentially damaging model accuracy.
+By reducing the precision of network parameters and activations, quantization aims to increase throughput and decrease memory footprint, at the cost of potentially damaging model accuracy.
 
-Provided the decrease in accuracy is minimal, this sounds ideal. However, implementing a GPU-based quantization scheme that *actually speeds up your model* is not straightforward. The main challenges stem from a lack of fast General Matrix Multiply (GEMM) GPU kernels for precisions lower than INT8, and the overheads associated with converting between floating point (FP) and Integer (INT) data types.
+Provided the decrease in accuracy is minimal, this sounds ideal. Indeed, it is relatively easy to quantize a model in a way that reduces memory footprint and preserves accuracy. However, there remains an issue:
 
-In this blog, we provide a detailed guide to GPU-based quantization of transformers. We describe an approach that is both flexible and capable of genuinely improve throughput. The content is organized as follows:
+> Implementing a GPU-based quantization scheme that **actually accelerates inference** is not straightforward. 
 
+The main challenge stems from the overheads associated with converting between floating point (FP) and Integer (INT) data types. Furthermore, there is a lack of fast General Matrix Multiply (GEMM) GPU kernels for precisions lower than INT8. For this reason, we focus solely on INT8 quantization in this blog.
+
+We describe an approach to GPU-based quantization of transformers that is both **flexible and fast**. The content is organized as follows:
+
+* [Introduction](#Introduction)
 * [Background](#Background)
 	* [The Quantization Equation](#The%20Quantization%20Equation)
 	* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
 	* [Calibration](#Calibration)
 	* [Quantization Granularity](#Quantization%20Granularity)
 * [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
-	* [i8f16](#i8f16)
+	* [i8i32](#i8i32)
 	* [i8i8](#i8i8)
 	* [Quantization Operation Overheads](#Quantization%20Operation%20Overheads)
 * [SmoothQuant](#SmoothQuant)
@@ -36,7 +41,7 @@ In this blog, we provide a detailed guide to GPU-based quantization of transform
 
 ## Background
 
-We’ll begin with a quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [References](#References) section [1-4].
+We’ll begin with a super quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [References](#References) section [1-4].
 
 ### The Quantization Equation
 In principle, we can use any function to convert from a higher-precision to lower-precision representation. But a linear function is simplest and quickest on the hardware [4]:

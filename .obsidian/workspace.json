@@ -18,8 +18,21 @@
                 "source": false
               }
             }
+          },
+          {
+            "id": "c256195b85971ede",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Fast and Flexible GPU Quantization for Transformers.md",
+                "mode": "preview",
+                "source": false
+              }
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -146,7 +159,7 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "bba1e3454c81048c",
+  "active": "c256195b85971ede",
   "lastOpenFiles": [
     "TODO.md",
     "Fast and Flexible GPU Quantization for Transformers.md",
