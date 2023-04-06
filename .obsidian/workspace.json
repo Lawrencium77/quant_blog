@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "ddaa3431bd42a0b5",
+        "id": "0387a23bd1a099e6",
         "type": "tabs",
         "children": [
           {
-            "id": "4d77629c15afdb32",
+            "id": "bba1e3454c81048c",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -69,8 +69,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 381.5,
-    "collapsed": true
+    "width": 381.5
   },
   "right": {
     "id": "8bd067abbbfdbde5",
@@ -147,10 +146,11 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "4d77629c15afdb32",
+  "active": "bba1e3454c81048c",
   "lastOpenFiles": [
-    "Mode 1 GEMM (3).svg",
+    "TODO.md",
     "Fast and Flexible GPU Quantization for Transformers.md",
+    "Mode 1 GEMM (3).svg",
     "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
     "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
     "_attachments/Mode 2 GEMM.svg",

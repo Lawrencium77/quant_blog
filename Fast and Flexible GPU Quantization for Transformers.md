@@ -302,9 +302,12 @@ Lastly we examine the effect of the aforementioned layout in memory on the matmu
 
 
 ### Fusion Implementation
-As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. 
+As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton). This section provides a short example. 
 
-We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton). This section provides a short example. Consider the following code:
+Consider the code below. It demonstrates modified version of Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
+
+* Fuses a quantization op, `_quant()`, and
+* Converts data layout from row-major to COL32 (see `cols_out`).
 
 ```python
 """
@@ -336,50 +339,44 @@ def layernorm_Q(
 	Output += row * stride_out
 	Input += row * stride
 
-	# Compute mean
+	# Layenorm: Compute mean
 	mean = 0
 	_mean = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
-	for off in range(0, N, BLOCK_SIZE):
-		cols = off + tl.arange(0, BLOCK_SIZE)
-		a = tl.load(Input + cols, mask=cols < N, other=0.0,    eviction_policy="evict_last").to(tl.float32)
-		_mean += a
-		mean = tl.sum(_mean, axis=0) / N
+	cols = off + tl.arange(0, BLOCK_SIZE)
+	a = tl.load(Input + cols, mask=cols < N, other=0.0,    eviction_policy="evict_last").to(tl.float32)
+	_mean += a
+	mean = tl.sum(_mean, axis=0) / N
 
-	# Compute variance
+	# Layernorm: Compute variance
 	_var = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
-	for off in range(0, N, BLOCK_SIZE):
-		cols = off + tl.arange(0, BLOCK_SIZE)
-		a = tl.load(Input + cols, mask=cols < N, other=0.0, eviction_policy="evict_last").to(tl.float32)
-		a = tl.where(cols < N, a - mean, 0.0)
-		_var += a * a
-		var = tl.sum(_var, axis=0) / N
-		rstd = 1 / tl.sqrt(var + eps)
+	cols = off + tl.arange(0, BLOCK_SIZE)
+	a = tl.load(Input + cols, mask=cols < N, other=0.0, eviction_policy="evict_last").to(tl.float32)
+	a = tl.where(cols < N, a - mean, 0.0)
+	_var += a * a
+	var = tl.sum(_var, axis=0) / N
+	rstd = 1 / tl.sqrt(var + eps)
 
-	# Get quantization clamps
+	# Layernorm: Multiply by weight, and add bias
+	cols = off + tl.arange(0, BLOCK_SIZE)
+	mask = cols < N
+	weight = tl.load(Weight + cols, mask=mask)
+	bias = tl.load(Bias + cols, mask=mask)
+	a = tl.load(Input + cols, mask=mask, other=0.0, eviction_policy="evict_first").to(tl.float32)
+	a_hat = (a - mean) * rstd
+	y = a_hat * weight + bias
+
+	# Quantize
 	pos_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) + 127
 	neg_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) - 127
+	out = _quant(y, quant_scale, pos_clamps, neg_clamps) # _quant defined elsewhere
 
-	for off in range(0, N, BLOCK_SIZE):
-		# Multiply by weight, and add bias
-		cols = off + tl.arange(0, BLOCK_SIZE)
-		mask = cols < N
-		weight = tl.load(Weight + cols, mask=mask)
-		bias = tl.load(Bias + cols, mask=mask)
-		a = tl.load(Input + cols, mask=mask, other=0.0, eviction_policy="evict_first").to(tl.float32)
-		a_hat = (a - mean) * rstd
-		y = a_hat * weight + bias
+	# Pointer arithmetic for Row-major --> COL32	
+	cols_out = cols // stride_out * (stride_out * M) + (cols % stride_out)
 	
-		# Quantize
-		out = _quant(y, quant_scale, pos_clamps, neg_clamps) # _quant defined elsewhere
-	
-		# Pointer arithmetic for Row-major --> COL32	
-		cols_out = cols // stride_out * (stride_out * M) + (cols % stride_out)
-		
-		# Store output
-		tl.store(Output + cols_out, out, mask=mask)
+	# Store output
+	tl.store(Output + cols_out, out, mask=mask)
 ```
 
-This describes a fused Layernorm & Quantization operation. The kernel also converts data layout from Row-major to COL32, so the output can be passed to a cuBLASLt i8i8 GEMM kernel. For simplicity, we have omitted the helper function that enqueues the above kernel.   
 
 
 ## References
