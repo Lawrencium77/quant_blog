@@ -396,7 +396,7 @@ When quantizing from FP16 to INT8 we not only reduce the range and number of val
 
 The image below illustrates the distribution of representable values for INT8 (top) and FP8 (bottom) when scaled to have the same min/max. 
 
-![](tmp%203.svg)
+![](_attachments/tmp%203.svg)
 
 #### FP8 Training
 Quantization aware training results in train time slowdown and approximate graidents with fake quantization layers. FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training, and the prospect of less intrusive calibration by matching train/test time precisions.
