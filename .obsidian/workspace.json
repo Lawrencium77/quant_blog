@@ -8,14 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "28d6e13bd56850e2",
+            "id": "b4c907ea2b9df1ce",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "release-notes",
               "state": {
-                "file": "Fast and Flexible GPU Quantization for Transformers.md",
-                "mode": "source",
-                "source": false
+                "currentVersion": "1.1.16"
               }
             }
           }
@@ -48,7 +46,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "fp8",
+                "query": "debug",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -65,8 +63,7 @@
               "state": {}
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -86,7 +83,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Fast and Flexible GPU Quantization for Transformers.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -103,7 +99,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Fast and Flexible GPU Quantization for Transformers.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,9 +120,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "Fast and Flexible GPU Quantization for Transformers.md"
-              }
+              "state": {}
             }
           }
         ]
@@ -147,8 +140,10 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "28d6e13bd56850e2",
+  "active": "0c5a2e842623e8c8",
   "lastOpenFiles": [
+    "2023-04-05.md",
+    "Fast and Flexible GPU Quantization for Transformers.md",
     "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
     "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
     "_attachments/Mode 2 GEMM.svg",
@@ -159,9 +154,7 @@
     "_attachments/Mode 1 GEMM (1).svg",
     "_attachments/Blank diagram (4).svg",
     "_attachments/Blank diagram (2).svg",
-    "_attachments/Blank diagram (1).svg",
     "applies.md",
-    "Fast and Flexible GPU Quantization for Transformers.md",
     "README.md",
     "_attachments"
   ]
