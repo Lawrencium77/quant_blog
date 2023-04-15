@@ -4,11 +4,23 @@
     "type": "split",
     "children": [
       {
-        "id": "442f0fb23a2951e7",
+        "id": "0387a23bd1a099e6",
         "type": "tabs",
         "children": [
           {
-            "id": "b4c907ea2b9df1ce",
+            "id": "bba1e3454c81048c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Fast and Flexible GPU Quantization for Transformers.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "c256195b85971ede",
             "type": "leaf",
             "state": {
               "type": "release-notes",
@@ -17,7 +29,8 @@
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -140,10 +153,11 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "0c5a2e842623e8c8",
+  "active": "c256195b85971ede",
   "lastOpenFiles": [
-    "2023-04-05.md",
+    "TODO.md",
     "Fast and Flexible GPU Quantization for Transformers.md",
+    "Mode 1 GEMM (3).svg",
     "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
     "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
     "_attachments/Mode 2 GEMM.svg",

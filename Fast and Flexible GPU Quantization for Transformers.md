@@ -1,5 +1,5 @@
 ## Introduction
-As transformer models increase in size, the computational cost of running inference also grows. Many companies now face the challenge of deploying state-of-the-art models in a cost-effective way.
+As transformer models increase in size, the computational cost of running inference also grows. Many organisations now face the challenge of deploying state-of-the-art models in a cost-effective way.
 
 This has led to a surge in interest for optimizing transformer inference. There are a range of techniques available [1], including:
 
@@ -9,34 +9,39 @@ This has led to a surge in interest for optimizing transformer inference. There 
 * Knowledge Distillation
 * Quantization
 
-Of these, quantization is in some sense the most universal. It can be applied to any network, regardless of architecture.
+Of these, quantization is perhaps the most universal. It can be applied to any network, without changing model architecture or shape.
 
-By reducing the precision of model parameters and activations, quantization aims to minimize increase throughput and decrease memory footprint, at the cost of potentially damaging model accuracy.
+By reducing the precision of network parameters and activations, quantization aims to increase throughput and decrease memory footprint, at the cost of potentially damaging model accuracy.
 
-Provided the decrease in accuracy is minimal, this sounds ideal. However, implementing a GPU-based quantization scheme that *actually speeds up your model* is not straightforward. The main challenges stem from a lack of fast General Matrix Multiply (GEMM) GPU kernels for precisions lower than INT8, and the overheads associated with converting between floating point (FP) and Integer (INT) data types.
+Provided the decrease in accuracy is minimal, this sounds ideal. Indeed, it is relatively easy to quantize a model in a way that reduces memory footprint and preserves accuracy. However, there remains an issue:
 
-In this blog, we provide a detailed guide to GPU-based quantization of transformers. We describe an approach that is both flexible and capable of genuinely improve throughput. The content is organized as follows:
+> Implementing a GPU-based quantization scheme that **actually accelerates inference** is not straightforward. 
 
+The main challenge stems from the overheads associated with converting between floating point (FP) and Integer (INT) data types. Furthermore, there is a lack of fast General Matrix Multiply (GEMM) GPU kernels for precisions lower than INT8. For this reason, we focus solely on INT8 quantization in this blog.
+
+We describe an approach to GPU-based quantization of transformers that is both **flexible and fast**. The content is organized as follows:
+
+* [Introduction](#Introduction)
 * [Background](#Background)
 	* [The Quantization Equation](#The%20Quantization%20Equation)
 	* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
 	* [Calibration](#Calibration)
 	* [Quantization Granularity](#Quantization%20Granularity)
 * [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
-	* [i8f16](#i8f16)
+	* [i8i32](#i8i32)
 	* [i8i8](#i8i8)
 	* [Quantization Operation Overheads](#Quantization%20Operation%20Overheads)
 * [SmoothQuant](#SmoothQuant)
 * [Implementation](#Implementation)
 	* [GPU Quantization in Practice](#GPU%20Quantization%20in%20Practice)
 	* [Memory Layouts](#Memory%20Layouts)
-	* [Fusion Strategy (and diagrams)](#Fusion%20Strategy%20(and%20diagrams))
+	* [Fusion Implementation](#Fusion%20Implementation)
 * [References](#References)
 
 
 ## Background
 
-We’ll begin with a quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [References](#References) section [1-4].
+We’ll begin with a super quick summary of quantization. For further reading on this subject, we’ve listed some nice blogs/papers in our [References](#References) section [1-4].
 
 ### The Quantization Equation
 In principle, we can use any function to convert from a higher-precision to lower-precision representation. But a linear function is simplest and quickest on the hardware [4]:
@@ -246,6 +251,82 @@ By zooming in (4 rows, 16 columns) we hopefully get a clearer picture of the lay
 
 While `COL32` might be the most performant option, there exists a tension whereby the cost of the layout conversion may cancel out any gains from the reduced precision matmul. Therefore we must either make a design decision à la FasterTransformer and persist the data in the required format, or hide the cost via kernel fusion. The latter approach is similar to how quantize/dequantize overhead is typically hidden, which we will discuss next.
 
+### Fusion Implementation
+As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton). This section provides a short example. 
+
+Consider the code below. It demonstrates modified version of Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
+
+* Fuses a quantization op, `_quant()`, and
+* Converts data layout from row-major to COL32 (see `cols_out`).
+
+```python
+"""
+Example Triton kernel that implements fused Layenorm + Quantization.
+Also performs layout conversion from row-major to COL32.
+The kernel code is adapted from the Triton Lang tutorial.
+See https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html
+"""
+import triton
+import triton.language as tl
+
+@triton.jit
+def layernorm_Q(
+	Input,
+	Output,
+	Weight,
+	Bias,
+	quant_scale,
+	stride, # Stride between rows
+	M, # Number of rows
+	N, # Number of columns
+	eps: tl.constexpr,
+	BLOCK_SIZE: tl.constexpr,
+):
+	stride_out = 32 # Because COL32
+
+	# Position of elements processed by this program
+	row = tl.program_id(0)
+	Output += row * stride_out
+	Input += row * stride
+
+	# Layenorm: Compute mean
+	mean = 0
+	_mean = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+	cols = off + tl.arange(0, BLOCK_SIZE)
+	a = tl.load(Input + cols, mask=cols < N, other=0.0,    eviction_policy="evict_last").to(tl.float32)
+	_mean += a
+	mean = tl.sum(_mean, axis=0) / N
+
+	# Layernorm: Compute variance
+	_var = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+	cols = off + tl.arange(0, BLOCK_SIZE)
+	a = tl.load(Input + cols, mask=cols < N, other=0.0, eviction_policy="evict_last").to(tl.float32)
+	a = tl.where(cols < N, a - mean, 0.0)
+	_var += a * a
+	var = tl.sum(_var, axis=0) / N
+	rstd = 1 / tl.sqrt(var + eps)
+
+	# Layernorm: Multiply by weight, and add bias
+	cols = off + tl.arange(0, BLOCK_SIZE)
+	mask = cols < N
+	weight = tl.load(Weight + cols, mask=mask)
+	bias = tl.load(Bias + cols, mask=mask)
+	a = tl.load(Input + cols, mask=mask, other=0.0, eviction_policy="evict_first").to(tl.float32)
+	a_hat = (a - mean) * rstd
+	y = a_hat * weight + bias
+
+	# Quantize
+	pos_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) + 127
+	neg_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) - 127
+	out = _quant(y, quant_scale, pos_clamps, neg_clamps) # _quant defined elsewhere
+
+	# Pointer arithmetic for Row-major --> COL32	
+	cols_out = cols // stride_out * (stride_out * M) + (cols % stride_out)
+	
+	# Store output
+	tl.store(Output + cols_out, out, mask=mask)
+```
+
 
 ### INT8 GEMM Benchmarking
 
@@ -255,7 +336,7 @@ We now look at peformance numbers for the various flavours of INT8 GEMM. For the
 
 $$D=\alpha AB+\beta C$$
 
-One important factor which determines INT8 GEMM performance (formula above) is the required output type. The matrix multiplication will always have INT dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output C should be INT8 or INT32. 
+One important factor which determines INT8 GEMM performance (formula above) is the required output type. The matrix multiplication will always have INT dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output C should be INT8 or INT32.
 
 INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16. In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 input we will also have to dequantize. However, if we require INT8 for the next kernel an INT8 output type can be ideal.
 
@@ -271,7 +352,7 @@ In summary, the decision is very much dependent on the accuracy/performance trad
 
 We previously touched upon the fact that INT32 return type requires dequantizing outside of the matmul. Performance could be improved by fusing the dequant with the matmul and returning FP16 outputs. We can get this behaviour for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize for INT8 outputs), but this only works if we are applying **per-tensor** quantization, where the dequantization parameter is a single scalar {refer to per-scalar/per-channel section for more detail}.
 
-What if we require **per-channel** quantization i.e. using a vector to dequantize? In this scenario CUTLASS comes to the rescue by allowing the definition of a custom epilogue function, which is applied after the matrix multiplication, in a single fused kernel. For this scenario the GEMM + epilogue definition is expanded to 
+What if we require **per-channel** quantization i.e. using a vector to dequantize? In this scenario CUTLASS comes to the rescue by allowing the definition of a custom epilogue function, which is applied after the matrix multiplication, in a single fused kernel. For this scenario the GEMM + epilogue definition is expanded to
 
 $$D=f_2(f_1(\alpha AB+\beta C, d)) $$
 The epilogue format comes from `EpilogueWithBroadcast` which applies a [binary operation](https://github.com/NVIDIA/cutlass/blob/master/include/cutlass/epilogue/thread/linear_combination_bias_elementwise.h#L215)`f1` between the matmul output and a column-wise broadcasted vector `d`, followed by an optional elementwise op `f2`.
@@ -292,7 +373,7 @@ While there might not be a huge improvement from FP16 output in terms of GEMM th
 
 #### Memory layout
 
-Lastly we examine the effect of the aforementioned layout in memory on the matmul performance 
+Lastly we examine the effect of the aforementioned layout in memory on the matmul performance
 
 |       Kernel       | Time (ms) | vs. FP16 |
 |:------------------:|:---------:|:--------:|
@@ -303,10 +384,10 @@ Lastly we examine the effect of the aforementioned layout in memory on the matmu
 
 ### The future of 8-bit quantization - FP8
 
-The arrival of Nvidia's Hopper/Lovelace architecture brings with it support for a new floating point datatype - FP8. This is available in two flavours:
+The arrival of Nvidia's Hopper/Lovelace architectures brings with it support for a new floating point datatype - FP8. This is available in two flavours:
 
 - **E5M2** - 5 exponent bits and 2 mantissa bits - larger dynamic range
-- **E4M3** - 4 exponent bits and 3 mantissa bits - higher precision 
+- **E4M3** - 4 exponent bits and 3 mantissa bits - higher precision
 
 > Insert image here
 
@@ -319,17 +400,11 @@ When quantizing from FP16 to INT8 we not only reduce the range and number of val
 Quantization aware training results in train time slowdown and approximate graidents with fake quantization layers. FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training, and the prospect of less intrusive calibration by matching train/test time precisions.
 
 ##### cuBLASLt API
-Although FP8 tensor cores have the same theoretical throughput as INT8, changes to the `cublasLtMatmul` API for FP8 means we can avoid a lot of the pain associated with achieving peak 8-bit performance. Specifically we can now consider the matmuls in isolation without having to apply fusions with adjacents operations 
-- Input requires Row Major ([TN](https://docs.nvidia.com/cuda/cublas/index.html#cublasltmatmul)) memory layout rather than COL32 - so we can bypass this conversion overhead 
+Although FP8 tensor cores have the same theoretical throughput as INT8, changes to the `cublasLtMatmul` API for FP8 means we can avoid a lot of the pain associated with achieving peak 8-bit performance. Specifically we can now consider the matmuls in isolation without having to apply fusions with adjacents operations due to:
+- Input requires Row Major ([TN](https://docs.nvidia.com/cuda/cublas/index.html#cublasltmatmul)) memory layout rather than COL32 - so we can bypass this conversion overhead
 - The [GEMM API](https://docs.nvidia.com/cuda/cublas/index.html#bit-floating-point-data-types-fp8-usage) now accepts additional scalars which are multiplied with the input/output tensors. This can be used to fuse quantize/dequantize with the matmul itself.
 
 
-
-
-
-
-
-### Fusion Strategy (and diagrams)
 
 ## References
 Section 0: Intro
