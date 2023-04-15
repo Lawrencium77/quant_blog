@@ -382,7 +382,7 @@ Lastly we examine the effect of the aforementioned layout in memory on the matmu
 | INT8 COL32 (cuBLASLt) |    308    |   1.95x  |
 
 
-## The Future of 8-bit Quantization - FP8
+### The Future of 8-bit Quantization - FP8
 
 The arrival of Nvidia's Hopper/Lovelace architectures brings with it support for a new floating point datatype - FP8. This is available in two flavours:
 
