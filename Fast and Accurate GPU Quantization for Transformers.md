@@ -355,8 +355,8 @@ This might typically be a bias addition followed by an activation function (e.g.
 |       Kernel       | Time (ms) | vs. FP16 |
 |:------------------:|:---------:|:--------:|
 | f16f16f16 (Torch)  |    600    |   1.0x   |
-| i8i8i32 (CUTLASS) |    364    |   1.65x  |
-| i8i8f16 (CUTLASS) |    308    |   1.95x  |
+| i8i8i32 (CUTLASS) |    461    |   1.30x  |
+| i8i8f16 (CUTLASS) |    438    |   1.37x  |
 
 While there might not be a huge improvement from FP16 output in terms of GEMM throughput, there are other peformance benefits:
 - 50% less data loaded in the next kernel (now FP16 instead of INT32)
