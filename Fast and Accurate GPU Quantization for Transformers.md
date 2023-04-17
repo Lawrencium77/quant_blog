@@ -35,7 +35,7 @@ $$Q(x)=\textrm{Int}(x/S)-Z$$
 
 Here, $Q$ and $x$ are the fixed-point output and floating-point input, while $S$ and $Z$ represent the scale factor and bias. $\textrm{Int}$ is a function that rounds to the nearest integer, clipping values outside of the representable range. 
 
-After applying our lower-precision operation we return the data to it's original dynamic range by dequantizing the data: 
+After applying our lower-precision operation we return the data to it's original dynamic range with dequantization: 
 
 $$\tilde{x}=S Q(x) + Z$$
 
