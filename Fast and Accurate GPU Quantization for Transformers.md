@@ -4,7 +4,7 @@ One popular technique for this is **quantization** - by reducing the precision o
 
 The main challenge stems from the overheads associated with the quantization/dequantization operations - which can mask the performance gains from the blazingly fast INT8 Tensor Core matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU, and can be found here.
 
-Achieving high throughput and low memory is all very well, but largely useless if quantizing to lower precision results in degradations in model accuarcy. In the first part of this blog we will introduce the quantization formulation, and explore some techniques for preserving accuracy - *whilst maintaining high throughput*.
+Achieving high throughput and low memory is all very well, but largely useless if quantizing to lower precision results in degradations in model accuarcy. In the first part of this blog we will introduce the quantization formulation, and explore some techniques for preserving accuracy - *while maintaining high throughput*.
 
 * [Introduction](#Introduction)
 * [Background](#Background)
