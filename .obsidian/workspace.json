@@ -14,7 +14,7 @@
               "type": "markdown",
               "state": {
                 "file": "Fast and Flexible GPU Quantization for Transformers.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               }
             }
@@ -69,7 +69,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "8bd067abbbfdbde5",
