@@ -80,7 +80,7 @@ It’s also feasible to share quantization parameters between some subgroups of 
 
 ## Specifics of  INT8 GEMMs
 
-The core element of a quantized neural network is INT8 matrix multiplication. Understanding its details is crucial for an efficient implementation. This section describes these details, and serves as context for [Part II](Part II: Fast GPU Quantization in Practice) of the blog
+The core element of a quantized neural network is INT8 matrix multiplication. Understanding its details is crucial for an efficient implementation. This section describes these details, and serves as context for [Part II](Part II: Fast GPU Quantization in Practice) of the blog.
 
 We identify two types of INT8 matmul, differentiated by their return type.
 
