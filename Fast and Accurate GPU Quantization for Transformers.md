@@ -16,6 +16,7 @@ Achieving high throughput and low memory is all very well, but largely useless i
 	* [i8i32](#i8i32)
 	* [i8i8](#i8i8)
 	* [Quantization Operation Overheads](#Quantization%20Operation%20Overheads)
+* [Quantization Aware Training](#Quantization%20Aware%20Training)
 * [SmoothQuant](#SmoothQuant)
 * [Implementation](#Implementation)
 	* [GPU Quantization in Practice](#GPU%20Quantization%20in%20Practice)
@@ -68,7 +69,11 @@ There are multiple methods to derive a clipping range from these activations, su
 To perform calibration, we used TensorRT’s PyTorch Quantization Toolkit [5]. Another option is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
 
 
-### Quantization Granularity {MOVE INTO SMOOTHQUANT SECTION OR JUST BEFORE}
+### Quantization Granularity 
+
+> [!TODO]
+> {MOVE INTO SMOOTHQUANT SECTION OR JUST BEFORE}
+
 A final distinction to be made is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
 
 ![](_attachments/Pasted%20image%2020230313162138.png)
@@ -109,7 +114,11 @@ Returning in INT8 involves an extra step:
 
 In this **requantization** step, labelled RQ, we convert the INT32 representation back into INT8. {TALK ABOUT HOW RQ is DERIVED). The benefit is a reduction in the amount of data written from GPU SRAM to DRAM - and so higher performance.
 
-#### Quantization Operation Overheads {MOVE TO BENCHMARKING SECTION?}
+#### Quantization Operation Overheads
+
+> [!TODO]
+> MOVE TO BENCHMARKING SECTION?
+
 To fully realise the throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html). 
 The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
@@ -121,11 +130,24 @@ In both cases, the Q node can sometimes be fused with a preceding operation, in 
 In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
 In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add).
 
-## Quantization Aware Training
+## Quantization-Aware Training
+So far, we have explored **Post-Training Quantization**, in which model weights are converted to INT8 after training. The degree of accuracy degradation depends upon the effectiveness of our calibration methods.
+
+Another approach, **Quantization-Aware Training**, accounts for the impact of quantization during the training process. It can be viewed as a fine-tuning stage, adjusting model parameters to better adapt to quantization effects, thereby minimizing accuracy degradation.
+
+Specifically, we insert nodes into the computational graph that do quantization, followed immediately by dequantization. These are labeled "QDQ" in the following diagram:
+
+![](_attachments/QAT.svg)
+
+We insert QDQ nodes for every quantized matmul in our network. Note that the above diagram represents i8i32 quantization. To prepare for i8i8, we insert an additional QDQ node after the matrix multiply to emulate the requantization step.
+
+The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn1]
+
 
 ## SmoothQuant
 
-{Reference LM.int8() in this section}
+> [!TODO]
+> Reference LLM.int8() in this section
 
 In this section, we give an intuition behind SmoothQuant - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
 
@@ -385,7 +407,7 @@ The arrival of Nvidia's Hopper/Lovelace architectures brings with it support for
 There are potential benefits to choosing FP8 as our quantization format from both an accuracy and performance perspective:
 
 #### Data distribution alignment
-When quantizing from FP16 to INT8 we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed, with more density around zero. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT (have we already defined this?) by using FP8 over INT8 (reference https://arxiv.org/abs/2208.09225 and https://arxiv.org/abs/2209.05433).
+When quantizing from FP16 to INT8 we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed, with more density around zero. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT by using FP8 over INT8 (reference https://arxiv.org/abs/2208.09225 and https://arxiv.org/abs/2209.05433).
 
 The image below illustrates the distribution of representable values for INT8 (top) and FP8 (bottom) when scaled to have the same min/max. 
 
@@ -416,3 +438,5 @@ Section 2: Theory
 5. [https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization)
 6. https://arxiv.org/abs/2211.10438
 7. 
+
+[^fn1]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
