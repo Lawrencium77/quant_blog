@@ -7,10 +7,11 @@ Of course, this is useless if quantizing to lower precision harms model accuracy
 Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. However, *achieving throughput improvements is more difficult*. The main challenge stems from overheads associated with the quantization/dequantization operations, which can mask performance gains from the blazingly fast INT8 [Tensor Core](https://www.nvidia.com/en-gb/data-center/tensor-cores/#:~:text=Tensor%20Cores%20enable%20mixed%2Dprecision,performance%20computing%20(HPC)%20tasks.) matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU.
 
 * [Part I: Accurate Quantization](#Part%20I:%20Accurate%20Quantization)
-	* [The Quantization Equation](#The%20Quantization%20Equation)
-	* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
-	* [Calibration](#Calibration)
-	* [Quantization Granularity](#Quantization%20Granularity)
+	* [Background Concepts](#Background%20Concepts)
+		* [The Quantization Equation](#The%20Quantization%20Equation)
+		* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
+		* [Calibration](#Calibration)
+		* [Quantization Granularity](#Quantization%20Granularity)
 	* [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
 		* [i8i32](#i8i32)
 		* [i8i8](#i8i8)
@@ -32,13 +33,15 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 		* [cuBLASLt API](#cuBLASLt%20API)
 	* [References](#References)
 
-
 > [! TODO]
 > Add references.
 
 # Part I: Accurate Quantization
 
-We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, some nice blogs/papers in the [References](#References) section [1-4].
+
+## Background Concepts
+
+We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, we've listed some nice blogs/papers in the [References](#References) section [1-4].
 
 ### The Quantization Equation
 
@@ -48,7 +51,7 @@ $$Q(x)=\textrm{Int}(x/S)-Z$$
 
 Here, $Q$ and $x$ are the fixed-point output and floating-point input, while $S$ and $Z$ represent the scale factor and bias. $\textrm{Int}$ is a function that rounds to the nearest integer, clipping values outside of the representable range. 
 
-After applying our lower-precision operation we return the data to it's original dynamic range with dequantization: 
+After applying our lower-precision operation we return the data to its original dynamic range with dequantization: 
 
 $$\tilde{x}=S Q(x) + Z$$
 
@@ -60,6 +63,8 @@ Here, $b$ is the number of bits in our quantization scheme. GPU based quantizati
 
 It's important to note that the rounding function in Equation (1) incurs a loss of information. In general, $\tilde{x}=SQ(x)\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
 
+> [!TODO]
+> Label Equations and Figures
 
 ### Dynamic vs Static Quantization
 A key question is how to determine the clipping range - determined by $\beta$. Too small, and we’ll excessively “truncate” outlier activations and weights. Too big, and we’ll lose precision.
@@ -80,13 +85,16 @@ There are multiple methods to derive a clipping range from these activations, su
 
 To perform calibration, we used TensorRT’s PyTorch Quantization Toolkit [5]. Another option is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
 
+> [!TODO]
+> Can we get some diagrams for this section?
+
 
 ### Quantization Granularity 
 
 > [!TODO]
 > {MOVE INTO SMOOTHQUANT SECTION OR JUST BEFORE}
 
-A final distinction to be made is how we quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
+A final distinction to be made is how quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
 
 ![](_attachments/Pasted%20image%2020230313162138.png)
 
@@ -97,7 +105,7 @@ It’s also feasible to share quantization parameters between some subgroups of 
 
 ## Specifics of  INT8 GEMMs
 
-The core element of a quantized neural network is INT8 matrix multiplication. Understanding its details is crucial for an efficient implementation. This section describes these details, and serves as context for [Part II](Part II: Fast GPU Quantization in Practice) of the blog.
+The core element of a quantized neural network is INT8 matrix multiplication. Understanding its details is crucial for an efficient implementation. This section describes these details, and serves as context for [Part II](Part II: Fast GPU Quantization in Practice).
 
 We identify two types of INT8 matmul, differentiated by their return type.
 
@@ -110,13 +118,16 @@ where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mat
 
 ![](_attachments/Mode%201%20GEMM%20(3)%201.svg)
 
+> [!TODO]
+> Make sure the zoom is consistent across all figures.
+
 The arrows indicate a data transfer with dtype given by their colour. The square boxes indicate operations, with dtype of the return variable also given by their colour.
 
 There are several points to note:
 
 * The input $X$ first passes through a quantization operation, labelled Q. This performs the operation described in Equation (1).
 * Our weights $W$ can be quantized offline. 
-* The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 numbers can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
+* The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 values can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
 * The output is passed through a dequantization op, labelled DQ. This performs the operation described in Equation (2), and returns in FP16.
 
 #### i8i8
@@ -127,15 +138,14 @@ Returning in INT8 involves an extra step:
 In this **requantization** step, labelled RQ, we convert the INT32 representation back into INT8. The benefit is a reduction in the amount of data written from GPU SRAM to DRAM - and so higher performance.
 
 > [!TODO]
-> {TALK ABOUT HOW RQ is DERIVED)
-
+> TALK ABOUT HOW RQ is DERIVED
 
 #### Quantization Operation Overheads
 
 > [!TODO]
 > MOVE TO BENCHMARKING SECTION?
 
-To fully realise the throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html). 
+To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html). 
 The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
 ![](_attachments/Mode%201%20GEMM%20(4).svg)
@@ -145,6 +155,8 @@ The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are 
 In both cases, the Q node can sometimes be fused with a preceding operation, in this case a layernorm. 
 In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
 In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add).
+
+For more detail, see the section on [Operator Fusion Implementation](#Operator%20Fusion%20Implementation).
 
 ## Quantization-Aware Training
 So far, we have explored **Post-Training Quantization**, in which model weights are converted to INT8 after training. The degree of accuracy degradation depends upon the effectiveness of our calibration methods.
@@ -165,9 +177,9 @@ The process is then relatively straightforward: we calibrate each QDQ node, and 
 > [!TODO]
 > Reference LLM.int8() in this section
 
-In this section, we give an intuition behind SmoothQuant - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
+This section gives an intuition behind SmoothQuant - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
 
-The authors describe two key observations that motivate SmoothQuant:
+The authors describe two key observations that motivate their approach:
 
 1. The distribution of neural network weights is uniform and flat. The distributions of activations is not. This makes activations harder to quantize than weights.
 2. Activation outliers appear in fixed channels.
@@ -213,24 +225,24 @@ A consequence of this is that SmoothQuant can only be applied to matrix multipli
 
 # Part II: Fast GPU Quantization in Practice
 
-In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operation against INT8 Tensor Cores, which were first introduced with the Turing architecture (compute capability 7.0+). Note that INT4 and INT1 Tensor Cores also exist, but these have been deprecated in future architectures so we focus on INT8 quantization.
+In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operation against INT8 Tensor Cores, which were first introduced with the Turing architecture (compute capability 7.0+). Note that INT4 and INT1 Tensor Cores also exist, but these have been deprecated in future architectures. We therefore focus on INT8 quantization.
 
 ![](_attachments/Pasted%20image%2020230416203418.png)
 
-Executing against Tensor Cores can be achieved by running the `mma.sync.aligned.m8n32k16.row.col.s32.s8.s8.s32` PTX instruction, or calling `wmma::mma_sync` at the CUDA level. However, both approaches require careful management of data movement and layouts to maximize Tensor Core throughput. 
+Executing against Tensor Cores can be achieved by running the `mma.sync.aligned.m8n32k16.row.col.s32.s8.s8.s32` [PTX](https://en.wikipedia.org/wiki/Parallel_Thread_Execution) instruction, or calling `wmma::mma_sync` at the CUDA level. However, both approaches require careful management of data movement and layouts to maximize Tensor Core throughput. 
 
-Thankfully these lower level details are abstracted away by the cuBLASLt  `cublasLtMatmul`  and CUTLASS `device::Gemm` APIs, both of which support IMMA (integer matrix multiply accumulate).
+Thankfully, these lower level details are abstracted away by the cuBLASLt  `cublasLtMatmul`  and CUTLASS `device::Gemm` APIs, both of which support IMMA (integer matrix multiply accumulate).
 
 ### Available Solutions
 
-While integration with these APIs is not currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** also leverage CUTLASS, but wrappers for their INT8 kernels have not yet been open sourced.
+While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** also leverage CUTLASS, but wrappers for their INT8 kernels have not yet been open sourced.
 
 Whilst these libraries are flexible and easy to integrate, at time of writing none of these options yield performance gains and are strictly slower than FP16. This is either due to a focus on accuracy and memory savings (at the expense of performance), or have just not yet provided an efficient implementation that hides the quantization overheads. 
 
-In contrast fully-fledged inference frameworks such as **TensorRT** and **FasterTransformer** *do* achieve performance gains and can simplify things as they handle the complexity around fusing the quant / dequant to the adjacent operators. This can be a particularly attractive option if you are interested in common Transformer types such as BERT and GPT, for which they have been heavily optimised. However, for anything more exotic it can be a challenge to reach the same levels of performance, when factoring in the hard assumptions these libraries make.
+In contrast, fully-fledged inference frameworks such as **TensorRT** and **FasterTransformer** do achieve performance gains and can simplify things as they handle the complexity around fusing the quant / dequant to the adjacent operators. This can be a particularly attractive option if you are interested in common Transformer types such as BERT and GPT, for which they have been heavily optimised. However, for anything more exotic it can be a challenge to reach the same levels of performance, when factoring in the hard assumptions these libraries make.
 
 #### TensorRT
-When starting from a PyTorch model, TensorRT typically requires an ONNX graph as a starting point, which means all operations in the model must be compatible with the ONNX specification, as well as being compatible with TensorRT _and_ the required datatype. However this is not the approach taken with TensorRT's flagship BERT implementation which shows an impressive 2x throughput improvement when using INT8 over FP16. Instead, the model is rewritten using the TRT Network Definition API, and utilizes custom plugins (for example fusing the multi-headed attention). This is essential for peak performance, but this level of manual intervention means the benefits of a more generic model export + inference runtime are somewhat diminished. Coupled with the fact that a chunk of TensorRT is a closed source black box, it can lead to a non-trivial development experience.
+When starting from a PyTorch model, TensorRT typically requires an ONNX graph as a starting point, which means all operations in the model must be compatible with the ONNX specification, as well as being compatible with TensorRT _and_ the required datatype. However, this is not the approach taken with TensorRT's flagship BERT implementation which shows an impressive 2x throughput improvement when using INT8 over FP16. Instead, the model is rewritten using the TRT Network Definition API, and utilizes custom plugins (for example fusing the multi-headed attention). This is essential for peak performance, but this level of manual intervention means the benefits of a more generic model export + inference runtime are somewhat diminished. Coupled with the fact that a chunk of TensorRT is a closed source black box, it can lead to a non-trivial development experience.
 
 #### FasterTransformer 
 In contrast FasterTransformer is fully open sourced, but still only supports INT8 out of the box with a small number of standard architectures. This is likely because the INT8 compatible models have been rewritten from the ground up in C++, and for good reason: in order to leverage the best performance from cuBLASLt a **non-standard interleaved data layout** is used for input/output tensors, and so custom activation / normalization kernels are required to avoid expensive layout conversions between matmuls. Whilst this gives performance competitive with TensorRT under certain conditions, it does limit the extensibility of the existing INT8 model implementations for more novel architectures.
@@ -285,7 +297,7 @@ While `COL32` might be the most performant option, there exists a tension whereb
 ### Operator Fusion Implementation
 As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton). This section provides a short example. 
 
-Consider the code below. It demonstrates modified version of Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
+Consider the code below. It demonstrates a modified Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
 
 * Fuses a quantization op, `_quant()`, and
 * Converts data layout from row-major to COL32 (see `cols_out`).
@@ -361,15 +373,15 @@ def layernorm_Q(
 
 ### INT8 GEMM Benchmarking
 
-We now look at peformance numbers for the various flavours of INT8 GEMM. For these benchmarks we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions. A detailed guide to timing CUDA kernels with PyTorch can be found [here](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
+We now look at peformance numbers for the various flavours of INT8 GEMM. For these benchmarks, we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions. A detailed guide to timing CUDA kernels with PyTorch can be found [here](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
 
 ####  INT8 vs INT32 output precision
 
 $$D=\alpha AB+\beta C$$
 
-One important factor which determines INT8 GEMM performance (formula above) is the required output type. The matrix multiplication will always have INT8 dtype for matrices A and B, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output C should be INT8 or INT32.
+One important factor which determines INT8 GEMM performance (formula above) is the required output type. The matrix multiplication will always have INT8 dtype for matrices $A$ and $B$, which then accumulate the outputs into INT32 within the kernel,  but we need to decide whether output C should be INT8 or INT32.
 
-INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We will also have to dequantize after the matmul to return to FP16. In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 input we will also have to dequantize. However, if we require INT8 for the next kernel an INT8 output type can be ideal.
+INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We'll also have to dequantize after the matmul to return to FP16. In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found {earlier in the blog}. If the next operation requires FP16 input we will also have to dequantize. However, if we require INT8 for the next kernel an INT8 output type can be ideal.
 
 In summary, the decision is very much dependent on the accuracy/performance trade-off, as well as the specifics of the model architecture.
 
