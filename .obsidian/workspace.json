@@ -14,25 +14,12 @@
               "type": "markdown",
               "state": {
                 "file": "Fast and Accurate GPU Quantization for Transformers.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "dcd72623a8e45c17",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Fast and Accurate GPU Quantization for Transformers.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               }
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -82,7 +69,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "8bd067abbbfdbde5",
@@ -159,11 +147,12 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "dcd72623a8e45c17",
+  "active": "b4c907ea2b9df1ce",
   "lastOpenFiles": [
-    "Fast and Accurate GPU Quantization for Transformers - Part 2.md",
-    "Fast and Accurate GPU Quantization for Transformers.md",
+    "_attachments/QAT.svg",
     "_attachments/Pasted image 20230416203418.png",
+    "Fast and Accurate GPU Quantization for Transformers.md",
+    "Fast and Flexible GPU Quantization for Transformers.md",
     "_attachments/tmp 3.svg",
     "tmp.svg",
     "tmp 2.svg",
