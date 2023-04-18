@@ -1,10 +1,11 @@
 As Transformer models increase in size, the computational cost of running inference also grows. Many organisations now face the challenge of deploying state-of-the-art models in a cost-effective way.
 
-One popular technique for this is **quantization** - by reducing the precision of network parameters and activations, quantization aims to **increase throughput** and **decrease memory footprint**. Whilst reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed, achieving performance improvements can be trickier. This is particularly true when running INT8 operations on GPU.
+One popular technique for doing so is **quantization** - by reducing the precision of network parameters and activations, quantization aims to **increase throughput** and **decrease memory footprint**. 
 
-The main challenge stems from the overheads associated with the quantization/dequantization operations - which can mask the performance gains from the blazingly fast INT8 Tensor Core matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU, and can be found here.
+Of course, this is useless if quantizing to lower precision harms model accuracy. The first part of this blog introduces the quantization formulation, and explores techniques for minimising such degradations.
 
-Achieving high throughput and low memory is all very well, but largely useless if quantizing to lower precision results in degradations in model accuarcy. In the first part of this blog we will introduce the quantization formulation, and explore some techniques for preserving accuracy - *while maintaining high throughput*.
+Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. However, *achieving throughput improvements is more difficult*. The main challenge stems from overheads associated with the quantization/dequantization operations, which can mask performance gains from the blazingly fast INT8 [Tensor Core](https://www.nvidia.com/en-gb/data-center/tensor-cores/#:~:text=Tensor%20Cores%20enable%20mixed%2Dprecision,performance%20computing%20(HPC)%20tasks.) matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU.
+
 
 * [Introduction](#Introduction)
 * [Background](#Background)
