@@ -305,7 +305,7 @@ Zooming in on the first 16 x 4 elemnts gives a clearer picture of the layout pat
 #### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
 ![](_attachments/Pasted%20image%2020230329113458.png)
 
-While `COL32` is the most performant layout, it comes with an associated cost of layout conversion. This may cancel out any gains from the reduced precision matmul. Therefore, we must deicde to either:
+While `COL32` is the most performant layout, it comes with an associated cost of layout conversion. This may cancel out any gains from the reduced precision matmul. Therefore, we must decide to either:
 
 1. Persist the data in the required format (à la FasterTransformer ).
 2. Hide the cost via kernel fusion. 
