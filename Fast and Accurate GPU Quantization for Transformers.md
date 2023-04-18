@@ -232,12 +232,9 @@ A consequence of this is that SmoothQuant can only be applied to matrix multipli
 
 # Part II: Fast GPU Quantization in Practice
 
-In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operation against INT8 Tensor Cores. These were first introduced with the Turing architecture (compute capability 7.0+). INT4 and INT1 Tensor Cores also exist but have been deprecated in future architectures. We therefore focus on INT8 quantization.
+In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operation against INT8 Tensor Cores. These were first introduced with the Turing architecture (compute capability 7.0+). INT4 and INT1 Tensor Cores also exist but have been deprecated in future architectures (see the figure below, taken from [Wikipedia](https://en.wikipedia.org/wiki/Ampere_(microarchitecture))). We therefore focus on INT8 quantization.
 
 ![](_attachments/Pasted%20image%2020230416203418.png)
-
-> [!TODO]
-> Do we have a source for this image?
 
 Executing against Tensor Cores can be achieved by running the `mma.sync.aligned.m8n32k16.row.col.s32.s8.s8.s32` [PTX](https://en.wikipedia.org/wiki/Parallel_Thread_Execution) instruction, or calling `wmma::mma_sync` at the CUDA level. However, both approaches require careful management of data movement and layouts to maximize Tensor Core throughput. 
 
