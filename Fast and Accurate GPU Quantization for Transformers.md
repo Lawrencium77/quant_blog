@@ -141,8 +141,11 @@ Returning in INT8 involves an extra step:
 
 In this **requantization** step, labelled RQ, we convert the INT32 representation back into INT8. The benefit is a reduction in the amount of data written from GPU SRAM to DRAM - and so higher performance.
 
-> [!TODO]
-> TALK ABOUT HOW RQ is DERIVED
+We can think of requantization as first dequantizing to a floating point value, $Z$, and subsequently quantizing. The requantization scale factor combines these steps:
+
+$$S_{RQ}=\frac{S_Z}{S_XS_W}$$
+
+where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, weights, and intermediate variable $Z$.
 
 #### Quantization Operation Overheads
 
