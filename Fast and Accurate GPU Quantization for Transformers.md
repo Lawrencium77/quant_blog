@@ -124,7 +124,11 @@ Returning in INT8 involves an extra step:
 
 ![](_attachments/Mode%202%20GEMM.svg)
 
-In this **requantization** step, labelled RQ, we convert the INT32 representation back into INT8. {TALK ABOUT HOW RQ is DERIVED). The benefit is a reduction in the amount of data written from GPU SRAM to DRAM - and so higher performance.
+In this **requantization** step, labelled RQ, we convert the INT32 representation back into INT8. The benefit is a reduction in the amount of data written from GPU SRAM to DRAM - and so higher performance.
+
+> [!TODO]
+> {TALK ABOUT HOW RQ is DERIVED)
+
 
 #### Quantization Operation Overheads
 
