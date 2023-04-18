@@ -33,6 +33,9 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 	* [References](#References)
 
 
+> [! TODO]
+> Add references.
+
 # Part I: Accurate Quantization
 
 We’ll begin with a quick overview of quantization. For deeper reading on this subject, some nice blogs/papers in the [References](#References) section [1-4].
