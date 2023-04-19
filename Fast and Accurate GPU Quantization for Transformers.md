@@ -258,13 +258,11 @@ As previously suggested, ensuring that input and weight matrices satisfy specifi
 
 Unfortunately, this is not the case with cuBLASLt, which operates on **column major** by default. The `cublasLtMatmul` API does support a row major input tensor with column major weight tensor (and we can transpose the weight tensor offline), but the output is returned in column major. In other words, input/weight/output = `ROW`/`COL`/`COL`. CUTLASS  goes further and supports `ROW`/`COL`/`ROW` out of the box, which makes it a great option for PyTorch integrations.
 
-While these options are already faster than FP16, maximizing performance requires that our input tensors are ordered in the exceptionally non-standard `COL32`/`CUBLASLT_ORDER_COL32_2R_4R4`/`COL32` layout.
+While these options are already faster than FP16, performance can be further improved by using the COL32/CUBLASLT_ORDER_COL32_2R_4R4/COL32 layout for input tensors. This layout is exceptionally non-standard but can significantly boost performance.
 
-`COL32` is an interleaved layout which can be interpreted as row-major ordered, but in blocks of 32 columns. CUTLASS supports this by specifying `cutlass::layout::ColumnMajorInterleaved<32>`.
+`COL32` is an interleaved layout which can be interpreted as row-major ordered but in blocks of 32 columns. CUTLASS supports this by specifying `cutlass::layout::ColumnMajorInterleaved<32>`. `CUBLASLT_ORDER_COL32_2R_4R4` is even more exotic and is best explained visually. 
 
-There also exists `CUBLASLT_ORDER_COL32_2R_4R4`, which is even more exotic! 
-
-All memory layouts are best explained visually. The diagrams below show 32x64 matrices.  Each numerical value corresponds the address offset in memory for that element.
+The diagrams below depict 32x64 matrices where each numerical value represents the memory address offset for that element.
 
 > [!QUESTION]
 > Should we explain how to interpret these diagrams in more detail?
