@@ -468,7 +468,7 @@ The arrival of Nvidia's Hopper/Lovelace architectures brings support for a new f
 - **E5M2** - 5 exponent bits and 2 mantissa bits - larger dynamic range
 - **E4M3** - 4 exponent bits and 3 mantissa bits - higher precision
 
-Choosing an FP8 quantization format could have both accuracy and performance benefits.
+Choosing an FP8 quantization format can have both accuracy and performance benefits.
 
 ### Data distribution alignment
 When quantizing from FP16 to INT8, we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT by using FP8 over INT8 
