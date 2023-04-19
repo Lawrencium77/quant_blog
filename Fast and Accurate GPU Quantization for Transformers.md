@@ -438,7 +438,7 @@ The throughput figures we measured are shown below:
 | i8i8i32 (CUTLASS) |    461    |   1.30x  |
 | i8i8f16 (CUTLASS) |    438    |   1.37x  |
 
-Whilst there might not huge throughput improvements from FP16 output, there are other peformance benefits:
+Whilst there might not be huge throughput improvements from FP16 output, there are other performance benefits:
 
 - 50% less data loaded in the next kernel (now FP16 instead of INT32)
 - Avoid fusion of the dequantize operator with the next kernel
