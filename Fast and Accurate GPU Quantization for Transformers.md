@@ -242,7 +242,7 @@ Thankfully, these lower level details are abstracted away by the cuBLASLt  `cub
 
 ## Available Solutions
 
-While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** also leverage CUTLASS, but wrappers for their INT8 kernels are notz open source.
+While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** also leverage CUTLASS, but wrappers for their INT8 kernels are not open source.
 
 Although these libraries offer flexibility and easy integration, they don't provide performance gains and are consistently slower than FP16. This is due to prioritizing accuracy and memory savings or lacking efficient quantization implementations.
 
