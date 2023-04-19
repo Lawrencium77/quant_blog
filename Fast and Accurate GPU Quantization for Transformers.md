@@ -307,7 +307,7 @@ Zooming in on the first 16 x 4 elemnts gives a clearer picture of the layout pat
 
 While `COL32` is the most performant layout, it comes with an associated cost of layout conversion. This may cancel out any gains from the reduced precision matmul. Therefore, we must decide to either:
 
-1. Persist the data in the required format (à la FasterTransformer).
+1. Persist the data in the required format (à la [Faster Transformer](#Available%20Solutions)).
 2. Hide the cost via kernel fusion. 
 
 The latter approach is similar to how quantization/dequantization overhead is typically hidden, which we discuss next.
