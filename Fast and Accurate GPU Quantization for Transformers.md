@@ -33,9 +33,6 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 	* [cuBLASLt API](#cuBLASLt%20API)
 * [References](#References)
 
-> [! TODO]
-> Add references.
-
 # Part I: Accurate Quantization
 
 
@@ -83,7 +80,7 @@ There are multiple methods to derive a clipping range from these activations, su
 * Minimising KL Divergence between the input and quantized distributions
 * Minimising the Mean-Squared Error between input and quantized distributions
 
-To perform calibration, we used TensorRT’s PyTorch Quantization Toolkit [5]. Another option is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
+To perform calibration, we used TensorRT’s [PyTorch Quantization Toolkit](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization). Another option is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
 
 > [!TODO]
 > Can we get some diagrams for this section?
@@ -152,7 +149,7 @@ where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, w
 > [!TODO]
 > MOVE TO BENCHMARKING SECTION?
 
-To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html). 
+To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html)[5]. 
 The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
 ![](_attachments/Mode%201%20GEMM%20(4).svg)
@@ -184,7 +181,7 @@ The process is then relatively straightforward: we calibrate each QDQ node, and 
 > [!TODO]
 > Reference LLM.int8() in this section
 
-This section gives an intuition behind SmoothQuant - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
+This section gives an intuition behind SmoothQuant [6] - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
 
 The authors describe two key observations that motivate their approach:
 
@@ -242,19 +239,19 @@ Thankfully, these lower level details are abstracted away by the cuBLASLt  `cub
 
 ## Available Solutions
 
-While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** also leverage CUTLASS, but wrappers for their INT8 kernels are not open source.
+While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant [6]) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) [7] which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** [8] also leverage [CUTLASS](https://github.com/NVIDIA/cutlass), but wrappers for their INT8 kernels are not open source.
 
 Although these libraries offer flexibility and easy integration, they don't provide performance gains and are consistently slower than FP16. This is due to prioritizing accuracy and memory savings or lacking efficient quantization implementations.
 
-In contrast, fully-fledged inference frameworks such as **TensorRT (TRT)** and **FasterTransformer** do achieve performance gains. They also manage the complexity of fusing quant & dequant nodes with adjacent operators. This is appealing for common Transformer types such as BERT and GPT, for which they have been heavily optimised. However, the rigid assumptions made by these libraries make them less suitable for more unusual architectures. 
+In contrast, fully-fledged inference frameworks such as [TensorRT](https://github.com/NVIDIA/TensorRT) (TRT) and [FasterTransformer](https://github.com/NVIDIA/FasterTransformer) do achieve performance gains. They also manage the complexity of fusing quant & dequant nodes with adjacent operators. This is appealing for common Transformer types such as BERT  and GPT, for which they have been heavily optimised. However, the rigid assumptions made by these libraries make them less suitable for more unusual architectures. 
 
-Specifically, whilst TRT supports generic ONNX models, to achieve peak performance in their BERT implementation they rewrite the model using the TRT Network Definition API, and utilize custom plugins (such as fused multi-headed attention). This level of manual intervention means the benefits of a more generic model export + inference runtime are diminished. FasterTransformer's INT8 compatible models have been rewritten in C++ in order to leverage the best performance by using the non-standard interleaved data layout required by cuBLASLt. This limits the extensibility of existing INT8 model implementations for novel architectures.
+Specifically, whilst TRT supports generic [ONNX](https://onnx.ai/) models, to achieve peak performance in their BERT implementation they rewrite the model using the TRT Network Definition API, and utilize custom plugins (such as fused multi-headed attention). This level of manual intervention means the benefits of a more generic model export + inference runtime are diminished. FasterTransformer's INT8 compatible models have been rewritten in C++ in order to leverage the best performance by using the non-standard interleaved data layout required by cuBLASLt. This limits the extensibility of existing INT8 model implementations for novel architectures.
 
 Ideally, we can achieve the performance of these inference frameworks while retaining the flexibility of [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes). The remainder of this blog concentrates on achieving both good INT8 performance _and_ flexibility. We propose modular components that can be applied to different architectures while remaining within the PyTorch framework for non-quantized parts.
 
 ## Memory Layouts
 
-As previously suggested, ensuring that input and weight matrices satisfy specific memory layout requirements is essential for INT8 GEMM performance . By default, all PyTorch operators expect a **row major** ordering for input and outputs tensors. Ideally, we'd use the same layout for our INT8 matmul to avoid conversion overhead.
+As previously suggested, ensuring that input and weight matrices satisfy specific memory layout requirements is essential for INT8 GEMM performance . By default, all PyTorch operators expect a [row major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) ordering for input and outputs tensors. Ideally, we'd use the same layout for our INT8 matmul to avoid conversion overhead.
 
 Unfortunately, this is not the case with cuBLASLt, which operates on **column major** by default. The `cublasLtMatmul` API does support a row major input tensor with column major weight tensor (and we can transpose the weight tensor offline), but the output is returned in column major. In other words, input/weight/output = `ROW`/`COL`/`COL`. CUTLASS  goes further and supports `ROW`/`COL`/`ROW` out of the box, which makes it a great option for PyTorch integrations.
 
@@ -266,9 +263,6 @@ The diagrams below depict 32x64 matrices where each numerical value represents t
 
 > [!QUESTION]
 > Should we explain how to interpret these diagrams in more detail?
-
-> [!TODO]
-> Check how this looks on the website.
 
 
 #### Row major (CUBLASLT_ORDER_ROW)
@@ -311,7 +305,7 @@ While `COL32` is the most performant layout, it comes with an associated cost of
 The latter approach is similar to how quantization/dequantization overhead is typically hidden, which we discuss next.
 
 ## Operator Fusion Implementation
-As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton). This section provides a short example. 
+As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton)[9]. This section provides a short example. 
 
 Consider the code below. It demonstrates a modified Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
 
@@ -469,10 +463,7 @@ The arrival of Nvidia's Hopper/Lovelace architectures brings support for a new f
 Choosing an FP8 quantization format can have both accuracy and performance benefits.
 
 ### Data distribution alignment
-When quantizing from FP16 to INT8, we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT by using FP8 over INT8 
-
-> [!TODO]
-> Reference https://arxiv.org/abs/2208.09225 and https://arxiv.org/abs/2209.05433.
+When quantizing from FP16 to INT8, we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT by using FP8 over INT8 [10][11]. 
 
 The image below illustrates the distribution of representable values for INT8 (top) and FP8 (bottom). These have been scaled to have the same min/max. 
 
@@ -490,22 +481,22 @@ Although FP8 tensor cores have the same theoretical throughput as INT8, changes 
 - [Input requires Row Major memory layout](https://docs.nvidia.com/cuda/cublas/index.html#cublasltmatmul) rather than COL32 - so we can bypass this conversion overhead
 - The [GEMM API](https://docs.nvidia.com/cuda/cublas/index.html#bit-floating-point-data-types-fp8-usage) now accepts additional scalars which are multiplied with the input/output tensors. This can be used to fuse quantize/dequantize with the matmul itself.
 
-Both of these changes mean we can consider each matmul in isolation, without having to apply fusions with adjacents operations.
+Both of these changes mean we can consider each matmul in isolation, without having to apply fusions with adjacents operations. 
 
 ## References
-Section 0: Intro
-1. https://lilianweng.github.io/posts/2023-01-10-inference-optimization/
 
-Section 1: Background:
+1. Subramanian, Suraj, et al. "[Practical Quantization in PyTorch](https://pytorch.org/blog/quantization-in-practice/)" (2022).
+2. Mao, Lei. "[Quantization for Neural Networks](https://leimao.github.io/article/Neural-Networks-Quantization/)" (2020).
+3. [PyTorch Docs - Quantization](https://pytorch.org/docs/stable/quantization.html#model-preparation-for-eager-mode-static-quantization).
+4. Gholami, Amir, et al. "[A survey of quantization methods for efficient neural network inference.](https://arxiv.org/pdf/2103.13630.pdf)" _arXiv preprint arXiv:2103.13630_ (2021).
+5. He, Horace. "[Making Deep Learning Go Brrrr From First Principles](https://horace.io/brrr_intro.html)" (2022).
+6. Xiao, Guangxuan, et al. "[Smoothquant: Accurate and efficient post-training quantization for large language models.](https://arxiv.org/pdf/2211.10438.pdf)" _arXiv preprint arXiv:2211.10438_ (2022).
+7. Dettmers, Tim, et al. "[8-Bit Optimizers via Block-Wise Quantization.](Dettmers, Tim, et al. ‘8-Bit Optimizers via Block-Wise Quantization’. _9th International Conference on Learning Representations, ICLR_, 2022.)" _9th International Conference on Learning Representations, ICLR_ (2022).
+8. Yao, Zhewei, et al. "[ZeroQuant: Efficient and affordable post-training quantization for large-scale transformers.](https://proceedings.neurips.cc/paper_files/paper/2022/file/adf7fa39d65e2983d724ff7da57f00ac-Paper-Conference.pdf)" _Advances in Neural Information Processing Systems_ 35 (2022): 27168-27183.
+9. Tillet, Philippe, Hsiang-Tsung Kung, and David Cox. "[Triton: an intermediate language and compiler for tiled neural network computations.](http://www.eecs.harvard.edu/~htk/publication/2019-mapl-tillet-kung-cox.pdf)" _Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages_ (2019).
+10. Kuzmin, Andrey, et al. "[FP8 Quantization: The Power of the Exponent.](https://arxiv.org/pdf/2208.09225.pdf)" _arXiv preprint arXiv:2208.09225_ (2022).
+11. Micikevicius, Paulius, et al. "[FP8 formats for deep learning.](https://arxiv.org/pdf/2209.05433.pdf)" _arXiv preprint arXiv:2209.05433_ (2022).
 
-1.     [https://pytorch.org/blog/quantization-in-practice/](https://pytorch.org/blog/quantization-in-practice/)
-2.     [https://leimao.github.io/article/Neural-Networks-Quantization/](https://leimao.github.io/article/Neural-Networks-Quantization/)
-3.     [https://pytorch.org/docs/stable/quantization.html#model-preparation-for-eager-mode-static-quantization](https://pytorch.org/docs/stable/quantization.html#model-preparation-for-eager-mode-static-quantization)
-4.     [https://arxiv.org/pdf/2103.13630.pdf](https://arxiv.org/pdf/2103.13630.pdf)
 
-Section 2: Theory
-5. [https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization)
-6. https://arxiv.org/abs/2211.10438
-7. 
 
 [^fn1]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
