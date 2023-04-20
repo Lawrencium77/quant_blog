@@ -485,8 +485,6 @@ Both of these changes mean we can consider each matmul in isolation, without hav
 
 ## References
 
-#### Part I: Accurate Quantization
-
 1. Subramanian, Suraj, et al. "[Practical Quantization in PyTorch](https://pytorch.org/blog/quantization-in-practice/)" (2022).
 2. Mao, Lei. "[Quantization for Neural Networks](https://leimao.github.io/article/Neural-Networks-Quantization/)" (2020).
 3. [PyTorch Docs - Quantization](https://pytorch.org/docs/stable/quantization.html#model-preparation-for-eager-mode-static-quantization).
@@ -494,17 +492,11 @@ Both of these changes mean we can consider each matmul in isolation, without hav
 5. [TensorRT pytorch-quantization](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization).
 6. He, Horace. "[Making Deep Learning Go Brrrr From First Principles](https://horace.io/brrr_intro.html)" (2022).
 7. Xiao, Guangxuan, et al. "[Smoothquant: Accurate and efficient post-training quantization for large language models.](https://arxiv.org/pdf/2211.10438.pdf)" _arXiv preprint arXiv:2211.10438_ (2022).
-
-
-
-#### Part II: Fast GPU Quantization in Practice
 8. Dettmers, Tim, et al. "[8-Bit Optimizers via Block-Wise Quantization.](Dettmers, Tim, et al. ‘8-Bit Optimizers via Block-Wise Quantization’. _9th International Conference on Learning Representations, ICLR_, 2022.)" _9th International Conference on Learning Representations, ICLR_ (2022).
 9. Yao, Zhewei, et al. "[ZeroQuant: Efficient and affordable post-training quantization for large-scale transformers.](https://proceedings.neurips.cc/paper_files/paper/2022/file/adf7fa39d65e2983d724ff7da57f00ac-Paper-Conference.pdf)" _Advances in Neural Information Processing Systems_ 35 (2022): 27168-27183.
 10. Devlin, Jacob, et al. "[Bert: Pre-training of deep bidirectional transformers for language understanding.](https://arxiv.org/pdf/1810.04805.pdf)" _arXiv preprint arXiv:1810.04805_ (2018).
 11. Radford, Alec, et al. "[Language models are unsupervised multitask learners.](https://life-extension.github.io/2020/05/27/GPT%E6%8A%80%E6%9C%AF%E5%88%9D%E6%8E%A2/language-models.pdf)" _OpenAI blog_ 1.8 (2019): 9.
 12. Tillet, Philippe, Hsiang-Tsung Kung, and David Cox. "[Triton: an intermediate language and compiler for tiled neural network computations.](http://www.eecs.harvard.edu/~htk/publication/2019-mapl-tillet-kung-cox.pdf)" _Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages_ (2019).
-
-#### Part III: FP8 & The Future of 8-bit Quantization
 13. Kuzmin, Andrey, et al. "[FP8 Quantization: The Power of the Exponent.](https://arxiv.org/pdf/2208.09225.pdf)" _arXiv preprint arXiv:2208.09225_ (2022).
 14. Micikevicius, Paulius, et al. "[FP8 formats for deep learning.](https://arxiv.org/pdf/2209.05433.pdf)" _arXiv preprint arXiv:2209.05433_ (2022).
 
