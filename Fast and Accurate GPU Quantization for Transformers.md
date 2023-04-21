@@ -459,7 +459,7 @@ When quantizing from FP16 to INT8, we not only reduce the range and number of va
 
 The image below illustrates the distribution of representable values for INT8 (top) and FP8 (bottom). These have been scaled to have the same min/max. 
 
-![](tmp.svg)
+![](_attachments/tmp.svg)
 
 ### FP8 Training
 [Quantization-Aware Training](#Quantization-Aware%20Training) results in decreased training throughput, and approximate gradients (due to the Straight-Through Estimator). In contrast, FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training.
