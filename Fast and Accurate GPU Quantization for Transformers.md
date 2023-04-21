@@ -90,7 +90,7 @@ To perform calibration, we used TensorRT’s [PyTorch Quantization Toolkit](http
 
 A final distinction to be made is how quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
 
-![|500](_attachments/GEMM%20(1).svg)
+<img src="_attachments/GEMM%20(1).svg" width="300" height="300">
 
 The simplest approach is to use the same scale factor for all elements of $W$ (and likewise for $X$). This is known as **per-tensor** quantization.
 
