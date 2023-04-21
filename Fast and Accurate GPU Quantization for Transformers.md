@@ -112,9 +112,6 @@ where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mat
 
 ![](_attachments/Mode%201%20GEMM%20(3)%201.svg)
 
-> [!TODO]
-> Make sure the zoom is consistent across all figures.
-
 The arrows indicate a data transfer with dtype given by their colour. The square boxes indicate operations, with dtype of the return variable also given by their colour.
 
 There are several points to note:
