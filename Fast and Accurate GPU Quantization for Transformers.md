@@ -426,11 +426,11 @@ The throughput figures we measured are shown below:
 | i8i8i32 (CUTLASS) |    461    |   1.30x  |
 | i8i8f16 (CUTLASS) |    438    |   1.37x  |
 
-Whilst there might not be huge throughput improvements from FP16 output, there are other performance benefits:
+Whilst there might not be huge throughput improvements from FP16 output for the matmul itself, there are other performance benefits to the next kernel in the sequence (following the matmul):
 
-- 50% less data loaded in the next kernel (now FP16 instead of INT32)
-- Avoid fusion of the dequantize operator with the next kernel
-- Avoid loading the dequantization vector in the next kernel (CUTLASS hides the cost of this load by pipelinining it with the matmul computation)
+- 50% less data loaded (now FP16 instead of INT32)
+- Avoid fusion of the dequantize operator 
+- Avoid loading the dequantization vector (CUTLASS hides the cost of this load by pipelinining it with the matmul computation)
 
 ### Memory layout
 
