@@ -80,7 +80,7 @@ There are multiple methods to derive a clipping range from these activations, su
 
 The following figure, taken from an Nvidia whitepaper [5], shows a histogram of input activations for some layer in a neural network. The vertical lines represent the maximum clipping range, $\beta$, for various calibration schemes:
 
-![](Blank%20diagram%20(5).svg)
+![](_attachments/Blank%20diagram%20(5).svg)
 
 To perform calibration, we used TensorRT’s [PyTorch Quantization Toolkit](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization). Another option is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
 
