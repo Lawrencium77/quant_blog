@@ -8,7 +8,7 @@
         "type": "tabs",
         "children": [
           {
-            "id": "b4c907ea2b9df1ce",
+            "id": "dcd72623a8e45c17",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -16,6 +16,16 @@
                 "file": "Fast and Accurate GPU Quantization for Transformers.md",
                 "mode": "source",
                 "source": false
+              }
+            }
+          },
+          {
+            "id": "75aac26a5a4335c7",
+            "type": "leaf",
+            "state": {
+              "type": "image",
+              "state": {
+                "file": "_attachments/tmp 3.svg"
               }
             }
           }
@@ -69,8 +79,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "8bd067abbbfdbde5",
@@ -147,22 +156,26 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "b4c907ea2b9df1ce",
+  "active": "dcd72623a8e45c17",
   "lastOpenFiles": [
-    "_attachments/QAT.svg",
-    "_attachments/Pasted image 20230416203418.png",
+    "Fast and Accurate GPU Quantization for Transformers.pdf",
     "Fast and Accurate GPU Quantization for Transformers.md",
-    "Fast and Flexible GPU Quantization for Transformers.md",
-    "_attachments/tmp 3.svg",
+    "2023-04-21.md",
     "tmp.svg",
-    "tmp 2.svg",
-    "tmp 1.svg",
-    "2023-04-05.md",
-    "_attachments/Screenshot 2023-03-29 at 15.01.32.png",
-    "_attachments/Screenshot 2023-03-29 at 14.43.18.png",
-    "_attachments/Mode 2 GEMM.svg",
-    "_attachments/Mode 2 GEMM (1).svg",
+    "_attachments/tmp 3.svg",
+    "Fast and Accurate GPU Quantization for Transformers.pdf.sb-7217ca55-n642XF",
+    "_attachments/Pasted image 20230329111707.png",
+    "2023-04-20.md",
+    "_attachments/Pasted image 20230420140756.png",
+    "_attachments/Pasted image 20230420140732.png",
+    "_attachments/Pasted image 20230420140718.png",
+    "_attachments/Mode 1 GEMM (2).svg",
     "_attachments/Mode 1 GEMM (4).svg",
+    "_attachments/Pasted image 20230420111524.png",
+    "_attachments/Pasted image 20230420111350.png",
+    "Fast and Flexible GPU Quantization for Transformers.md",
+    "Fast and Accurate GPU Quantization for Transformers - Part 2.md",
+    "2023-04-05.md",
     "applies.md",
     "README.md",
     "_attachments"

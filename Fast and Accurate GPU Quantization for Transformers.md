@@ -261,10 +261,6 @@ While these options are already faster than FP16, performance can be further imp
 
 The diagrams below depict 32x64 matrices where each numerical value represents the memory address offset for that element.
 
-> [!QUESTION]
-> Should we explain how to interpret these diagrams in more detail?
-
-
 #### Row major (CUBLASLT_ORDER_ROW)
 ![](_attachments/Pasted%20image%2020230329111413.png)
 
@@ -434,11 +430,7 @@ Whilst there might not be huge throughput improvements from FP16 output, there a
 
 - 50% less data loaded in the next kernel (now FP16 instead of INT32)
 - Avoid fusion of the dequantize operator with the next kernel
-- Avoid loading the dequantization vector in the next kernel (which CUTLASS pipelines the loading of)
-
-> [!TODO]
-> Improve the last sentence
-
+- Avoid loading the dequantization vector in the next kernel (CUTLASS hides the cost of this load by pipelinining it with the matmul computation)
 
 ### Memory layout
 
@@ -467,10 +459,7 @@ When quantizing from FP16 to INT8, we not only reduce the range and number of va
 
 The image below illustrates the distribution of representable values for INT8 (top) and FP8 (bottom). These have been scaled to have the same min/max. 
 
-> [!TODO]
-> Make this image bigger
-
-![](_attachments/tmp%203.svg)
+![](tmp.svg)
 
 ### FP8 Training
 [Quantization-Aware Training](#Quantization-Aware%20Training) results in decreased training throughput, and approximate gradients (due to the Straight-Through Estimator). In contrast, FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training.
