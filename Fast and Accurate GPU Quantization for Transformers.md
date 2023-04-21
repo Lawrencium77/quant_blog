@@ -56,7 +56,7 @@ This method is called **uniform quantization** since the quantized values are un
 
 $$S=\frac{\beta-\alpha}{2^b-1}\tag{3}$$
 
-Here, $b$ is the number of bits in our quantization scheme. GPU based quantization schemes typically enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization functions by setting $Z=0$, which helps reduce the cost of the transformation [4](https://arxiv.org/pdf/2103.13630.pdf).
+Here, $b$ is the number of bits in our quantization scheme. GPU based quantization schemes typically enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization functions by setting $Z=0$, which helps reduce the cost of the transformation [4].
 
 It's important to note that the rounding function in Equation $(1)$ incurs a loss of information. In general, $\tilde{x}=SQ(x)\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
 
