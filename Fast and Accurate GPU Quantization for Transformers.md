@@ -90,7 +90,7 @@ To perform calibration, we used TensorRT’s [PyTorch Quantization Toolkit](http
 > [!TODO]
 > MOVE INTO SMOOTHQUANT SECTION OR JUST BEFORE
 
-A final distinction to be made is how quantization parameters are shared between elements of our parameters and activations. Throughout this blog, we'll use the following diagram to illustrate a matmul:
+A final distinction to be made is how quantization parameters are shared between elements of our parameters and activations. Consider the following diagram of a matrix multiplication:
 
 <img src="_attachments/GEMM%20(1).svg" width="600" height="500">
 
