@@ -78,7 +78,7 @@ There are multiple methods to derive a clipping range from these activations, su
 * Minimising KL Divergence between the input and quantized distributions
 * Minimising the Mean-Squared Error between input and quantized distributions
 
-The following figure, taken from an Nvidia whitepaper [5], shows a histogram of input activations for some layer in a neural network. The vertical lines represent the maximum clipping range, $\beta$, for various calibration schemes:
+The following figure [5] shows a histogram of input activations for some layer in a neural network. The vertical lines represent the maximum clipping range, $\beta$, for various calibration schemes:
 
 ![](_attachments/Blank%20diagram%20(5).svg)
 
