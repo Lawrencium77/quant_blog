@@ -6,28 +6,31 @@ Of course, this is useless if quantizing to lower precision harms model accuracy
 
 Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. However, *achieving throughput improvements is more difficult*. The main challenge stems from overheads associated with the quantization/dequantization operations, which can mask performance gains from the blazingly fast INT8 [Tensor Core](https://www.nvidia.com/en-gb/data-center/tensor-cores/#:~:text=Tensor%20Cores%20enable%20mixed%2Dprecision,performance%20computing%20(HPC)%20tasks.) matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU.
 
-* [Part I: Accurate Quantization](#Part%20I:%20Accurate%20Quantization)
-	* [Background Concepts](#Background%20Concepts)
-	* [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
-	* [Quantization-Aware Training](#Quantization-Aware%20Training)
-	* [SmoothQuant](#SmoothQuant)
-* [Part II: Fast GPU Quantization in Practice](#Part%20II:%20Fast%20GPU%20Quantization%20in%20Practice)
-	* [Available Solutions](#Available%20Solutions)
-	* [Memory Layouts](#Memory%20Layouts)
-	* [Operator Fusion Implementation](#Operator%20Fusion%20Implementation)
-	* [INT8 GEMM Benchmarking](#INT8%20GEMM%20Benchmarking)
-* [Part III: FP8 & The Future of 8-bit Quantization](#Part%20III:%20FP8%20&%20The%20Future%20of%208-bit%20Quantization)
-	* [Data distribution alignment](#Data%20distribution%20alignment)
-	* [FP8 Training](#FP8%20Training)
-	* [cuBLASLt API](#cuBLASLt%20API)
-* [References](#References)
+# Contents
+
+* [Part I: Accurate Quantization](#part-i-accurate-quantization)
+	* [Background Concepts](#background-concepts)
+	* [Specifics of INT8 GEMMs](#specifics-of-int8-gemms)
+	* [Quantization-Aware Training](#quantization-aware-training)
+	* [SmoothQuant](#smoothquant)
+* [Part II: Fast GPU Quantization in Practice](#part-ii-fast-gpu-quantization-in-practice)
+	* [Available Solutions](#available-solutions)
+	* [Memory Layouts](#memory-layouts)
+	* [Operator Fusion Implementation](#operator-fusion-implementation)
+	* [INT8 GEMM Benchmarking](#int8-gemm-benchmarking)
+* [Part III: FP8 & The Future of 8-bit Quantization](#part-iii-fp8--the-future-of-8-bit-quantization)
+	* [Data distribution alignment](#data-distribution-alignment)
+	* [FP8 Training](#fp8-training)
+	* [cuBLASLt API](#cublaslt-api)
+* [References](#references)
+
 
 # Part I: Accurate Quantization
 
 
 ## Background Concepts
 
-We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, we've listed some nice blogs/papers in the [References](#References) section [1-4].
+We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, there are some nice blogs/papers in the [References](#References) section [1-4].
 
 ### The Quantization Equation
 
@@ -71,7 +74,7 @@ The following figure [5] shows a histogram of input activations for some layer i
 
 ![](_attachments/Blank%20diagram%20(5).svg)
 
-To perform calibration, we used TensorRT’s [PyTorch Quantization Toolkit](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization). Another option is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
+To perform calibration, one option is TensorRT’s [PyTorch Quantization Toolkit](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization). Another is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
 
 
 ### Quantization Granularity 
@@ -88,7 +91,7 @@ The simplest approach is to use the same scale factor for all elements of $W$ (a
 It’s also common to share quantization parameters between some subgroups of each input matrix. A popular option is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**. This is more accurate than per-tensor quantization; using a specific scale means the error incurred in quantizing each column is lower. 
 
 
-## Specifics of  INT8 GEMMs
+## Specifics of INT8 GEMMs
 
 The core element of a quantized neural network is INT8 matrix multiplication. Understanding its details is crucial for an efficient implementation. This section describes these details, and serves as context for [Part II](Part II: Fast GPU Quantization in Practice).
 
@@ -127,10 +130,8 @@ where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, w
 
 #### Quantization Operation Overheads
 
-> [!TODO]
-> MOVE TO BENCHMARKING SECTION?
-
-To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html)[6]. 
+To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [
+](https://horace.io/brrr_intro.html)[6]. 
 The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
 ![](_attachments/Mode%201%20GEMM%20(4).svg)
@@ -141,7 +142,7 @@ In both cases, the Q node can sometimes be fused with a preceding operation, in 
 In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
 In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add). ^091c98
 
-For more detail, see the section on [Operator Fusion Implementation](#Operator%20Fusion%20Implementation).
+For more detail, see the section on [Operator Fusion Implementation](#operator-fusion-implementation).
 
 ## Quantization-Aware Training
 So far, we have explored **Post-Training Quantization**, in which model weights are converted to INT8 after training. The degree of accuracy degradation depends upon the effectiveness of our calibration methods.
@@ -204,7 +205,7 @@ To control the migration strength, the authors propose combining each of these e
 
 $$s_j=\frac{\max(|X_j|)^\alpha}{\max({|W_j|})^{1-\alpha}}\tag{9}$$
 
-$\alpha=1$ corresponds to migrating all difficulty to the weights. $\alpha=0$ migrates all difficulty to the activations. In general we found setting $\alpha$ to be between 0.5 and 0.9 achieved good performance.
+$\alpha=1$ corresponds to migrating all difficulty to the weights. $\alpha=0$ migrates all difficulty to the activations. In general, setting $\alpha$ to be between 0.5 and 0.9 achieves good performance.
 
 It's important to reiterate that this smoothing process can be applied **offline**. For the weights, this is trivial. For the activations, we exploit the fact that GEMM operations in a transformer block often follow a layernorm. Combining the multiplication by $\textrm{diag}(s)^{-1}$  into the layernorm parameters means that it too can be done offline.
 
@@ -234,11 +235,11 @@ In contrast, fully-fledged inference frameworks such as [TensorRT](https://githu
 
 Specifically, whilst TRT supports generic [ONNX](https://onnx.ai/) models, to achieve peak performance in their BERT implementation they rewrite the model using the TRT Network Definition API, and utilize custom plugins (such as fused multi-headed attention). This level of manual intervention means the benefits of a more generic model export + inference runtime are diminished. FasterTransformer's INT8 compatible models have been rewritten in C++ in order to leverage the best performance by using the non-standard interleaved data layout required by cuBLASLt. This limits the extensibility of existing INT8 model implementations for novel architectures.
 
-Ideally, we can achieve the performance of these inference frameworks while retaining the flexibility of [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes). The remainder of this blog concentrates on achieving both good INT8 performance _and_ flexibility. We propose modular components that can be applied to different architectures while remaining within the PyTorch framework for non-quantized parts.
+Ideally, we can achieve the performance of these inference frameworks while retaining the flexibility of [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes). The remainder of this blog concentrates on achieving both good INT8 performance _and_ flexibility. It proposes modular components that can be applied to different architectures while remaining within the PyTorch framework for non-quantized parts.
 
 ## Memory Layouts
 
-As previously suggested, ensuring that input and weight matrices satisfy specific memory layout requirements is essential for INT8 GEMM performance . By default, all PyTorch operators expect a [row major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) ordering for input and outputs tensors. Ideally, we'd use the same layout for our INT8 matmul to avoid conversion overhead.
+As previously suggested, ensuring that input and weight matrices satisfy specific memory layout requirements is essential for INT8 GEMM performance . By default, all PyTorch operators expect a [row-major](https://en.wikipedia.org/wiki/Row-_and_column-major_order) ordering for input and outputs tensors. Ideally, we'd use the same layout for our INT8 matmul to avoid conversion overhead.
 
 Unfortunately, this is not the case with cuBLASLt, which operates on **column major** by default. The `cublasLtMatmul` API does support a row major input tensor with column major weight tensor (and we can transpose the weight tensor offline), but the output is returned in column major. In other words, input/weight/output = `ROW`/`COL`/`COL`. CUTLASS  goes further and supports `ROW`/`COL`/`ROW` out of the box, which makes it a great option for PyTorch integrations.
 
@@ -285,10 +286,10 @@ While `COL32` is the most performant layout, it comes with an associated cost of
 1. Persist the data in the required format (à la [Faster Transformer](#Available%20Solutions)).
 2. Hide the cost via kernel fusion. 
 
-The latter approach is similar to how quantization/dequantization overhead is typically hidden, which we discuss next.
+The latter approach is similar to how quantization/dequantization overhead is typically hidden, which is discussed next.
 
 ## Operator Fusion Implementation
-As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton)[11]. This section provides a short example. 
+As described in the [Quantization Operation Overheads](#quantization-operation-overheads) section, kernel fusion is essential to developing a quantized model with superior throughput to FP16. These can be implemented using OpenAI's [Triton Language](https://github.com/openai/triton)[11]. This section provides a short example.
 
 Consider the code below. It demonstrates a modified Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
 
@@ -368,9 +369,9 @@ def layernorm_Q(
 
 We now examine peformance numbers for various flavours of INT8 GEMM. For these benchmarks, we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions.
 
-Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
+Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, the following conclusions were found to be consistent over a variety of shapes/sizes.
 
-For a detailed guide to timing CUDA kernels with PyTorch, see our [previous blog](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). 
+For a detailed guide to timing CUDA kernels with PyTorch, see this [previous blog](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). 
 
 ###  INT8 vs INT32 output precision
 
@@ -380,9 +381,9 @@ One important factor which determines INT8 GEMM performance (formula above) is t
 
 INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We'll also have to dequantize after the matmul to return to FP16. 
 
-In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found in our [earlier section](#i8i8). 
+In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found in [earlier sections](#i8i8). 
 
-The throughput figures we measured are shown below:
+The measured throughput figures are shown below:
 
 |       Kernel       | Time (ms) | vs. FP16 |
 |:------------------:|:---------:|:--------:|
@@ -396,7 +397,7 @@ Overall, the decision is very much dependent on the accuracy/performance trade-o
 
 We previously touched upon the fact that INT32 return type requires dequantizing outside of the matmul. [Performance can be improved by fusing the dequant with the matmul itself, and returning FP16 outputs.](#^091c98) 
 
-We can achieve this for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize INT8 outputs). But this only works if we apply **per-tensor** quantization, where the dequantization parameter is a single scalar. See our [Quantization Granularity](#Quantization%20Granularity) section for more more detail.
+We can achieve this for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize INT8 outputs). But this only works if we apply [per-tensor](#Quantization%20Granularity) quantization, where the dequantization parameter is a single scalar.
 
 What if we require **per-channel** quantization? In this case, CUTLASS comes to the rescue by allowing the definition of a custom epilogue function. This is applied after the matrix multiplication, in a single fused kernel. The GEMM + epilogue definition is expanded to:
 
@@ -449,7 +450,7 @@ The image below illustrates the distribution of representable values for INT8 (t
 ![](_attachments/tmp.svg)
 
 ## FP8 Training
-[Quantization-Aware Training](#Quantization-Aware%20Training) results in decreased training throughput, and approximate gradients (due to the Straight-Through Estimator). In contrast, FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training.
+[Quantization-Aware Training](#quantization-aware-training) results in decreased training throughput, and approximate gradients (due to the Straight-Through Estimator). In contrast, FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training.
 
 ## cuBLASLt API
 Although FP8 tensor cores have the same theoretical throughput as INT8, changes to the `cublasLtMatmul` API for FP8 means we can avoid a lot of the pain associated with achieving peak 8-bit performance. Specifically:
