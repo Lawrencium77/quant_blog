@@ -161,13 +161,13 @@ The process is then relatively straightforward: we calibrate each QDQ node, and 
 
 For situations where QAT is insufficient or undesirable, other approaches can be considered.
 
-Recent research paper LLM.int8() [13] highlighted the existence of extreme outliers in large language models, which severely degrades accuracy when quantizing to INT8. Their solution was to decompose each matrix multiplication into 8-bit and 16-bit parts, where the wider range FP16 was used to preserve outliers.
+Recent research paper LLM.int8() [7] highlighted the existence of extreme outliers in large language models, which severely degrades accuracy when quantizing to INT8. Their solution was to decompose each matrix multiplication into 8-bit and 16-bit parts, where the wider range FP16 was used to preserve outliers.
 
 ![](_attachments/Pasted%20image%2020230424140657.png)
 
 This yielded promising results, but also introduced a performance overhead so is largely focused on memory savings.
 
-Another paper that we found to give practical benefits was SmoothQuant [7]. They again focus on the effect of outliers but importantly, SmoothQuant can be applied **offline**, meaning there is **no performance overheard** when running inference.
+Another paper that we found to give practical benefits was SmoothQuant [8]. They again focus on the effect of outliers but importantly, SmoothQuant can be applied **offline**, meaning there is **no performance overheard** when running inference.
 
 The authors describe two key observations that motivate their approach:
 
@@ -226,7 +226,7 @@ Thankfully, these lower level details are abstracted away by the cuBLASLt  `cub
 
 ## Available Solutions
 
-While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant [7]) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) [8] which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** [9] also leverage [CUTLASS](https://github.com/NVIDIA/cutlass), but wrappers for their INT8 kernels are not open source.
+While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant [7]) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8()) [9] which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** [10] also leverage [CUTLASS](https://github.com/NVIDIA/cutlass), but wrappers for their INT8 kernels are not open source.
 
 Although these libraries offer flexibility and easy integration, they don't provide performance gains and are consistently slower than FP16. This is due to prioritizing accuracy and memory savings or lacking efficient quantization implementations.
 
@@ -288,7 +288,7 @@ While `COL32` is the most performant layout, it comes with an associated cost of
 The latter approach is similar to how quantization/dequantization overhead is typically hidden, which we discuss next.
 
 ## Operator Fusion Implementation
-As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton)[10]. This section provides a short example. 
+As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton)[11]. This section provides a short example. 
 
 Consider the code below. It demonstrates a modified Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
 
@@ -442,7 +442,7 @@ The arrival of Nvidia's Hopper/Lovelace architectures brings support for a new f
 Choosing an FP8 quantization format can have both accuracy and performance benefits.
 
 ## Data distribution alignment
-When quantizing from FP16 to INT8, we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT by using FP8 over INT8 [11][12]. 
+When quantizing from FP16 to INT8, we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT by using FP8 over INT8 [12],[13]. 
 
 The image below illustrates the distribution of representable values for INT8 (top) and FP8 (bottom). These have been scaled to have the same min/max. 
 
@@ -467,13 +467,13 @@ Both of these changes mean we can consider each matmul in isolation, without hav
 4. Gholami, Amir, et al. "[A survey of quantization methods for efficient neural network inference.](https://arxiv.org/pdf/2103.13630.pdf)" _arXiv preprint arXiv:2103.13630_ (2021).
 5. Wu, Hao, et al. "[Integer quantization for deep learning inference: Principles and empirical evaluation.](https://arxiv.org/pdf/2004.09602.pdf)" _arXiv preprint arXiv:2004.09602_ (2020).
 6. He, Horace. "[Making Deep Learning Go Brrrr From First Principles](https://horace.io/brrr_intro.html)" (2022).
-7. Xiao, Guangxuan, et al. "[Smoothquant: Accurate and efficient post-training quantization for large language models.](https://arxiv.org/pdf/2211.10438.pdf)" _arXiv preprint arXiv:2211.10438_ (2022).
-8. Dettmers, Tim, et al. "[8-Bit Optimizers via Block-Wise Quantization.](Dettmers, Tim, et al. ‘8-Bit Optimizers via Block-Wise Quantization’. _9th International Conference on Learning Representations, ICLR_, 2022.)" _9th International Conference on Learning Representations, ICLR_ (2022).
-9. Yao, Zhewei, et al. "[ZeroQuant: Efficient and affordable post-training quantization for large-scale transformers.](https://proceedings.neurips.cc/paper_files/paper/2022/file/adf7fa39d65e2983d724ff7da57f00ac-Paper-Conference.pdf)" _Advances in Neural Information Processing Systems_ 35 (2022): 27168-27183.
-10. Tillet, Philippe, Hsiang-Tsung Kung, and David Cox. "[Triton: an intermediate language and compiler for tiled neural network computations.](http://www.eecs.harvard.edu/~htk/publication/2019-mapl-tillet-kung-cox.pdf)" _Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages_ (2019).
-11. Kuzmin, Andrey, et al. "[FP8 Quantization: The Power of the Exponent.](https://arxiv.org/pdf/2208.09225.pdf)" _arXiv preprint arXiv:2208.09225_ (2022).
-12. Micikevicius, Paulius, et al. "[FP8 formats for deep learning.](https://arxiv.org/pdf/2209.05433.pdf)" _arXiv preprint arXiv:2209.05433_ (2022).
-13. Dettmers, Tim, et al. "[Llm. int8 (): 8-bit matrix multiplication for transformers at scale.](https://arxiv.org/pdf/2208.07339.pdf)" _arXiv preprint arXiv:2208.07339_ (2022).
+7. Dettmers, Tim, et al. "[Llm. int8 (): 8-bit matrix multiplication for transformers at scale.](https://arxiv.org/pdf/2208.07339.pdf)" _arXiv preprint arXiv:2208.07339_ (2022).
+8. Xiao, Guangxuan, et al. "[Smoothquant: Accurate and efficient post-training quantization for large language models.](https://arxiv.org/pdf/2211.10438.pdf)" _arXiv preprint arXiv:2211.10438_ (2022).
+9. Dettmers, Tim, et al. "[8-Bit Optimizers via Block-Wise Quantization.](Dettmers, Tim, et al. ‘8-Bit Optimizers via Block-Wise Quantization’. _9th International Conference on Learning Representations, ICLR_, 2022.)" _9th International Conference on Learning Representations, ICLR_ (2022).
+10. Yao, Zhewei, et al. "[ZeroQuant: Efficient and affordable post-training quantization for large-scale transformers.](https://proceedings.neurips.cc/paper_files/paper/2022/file/adf7fa39d65e2983d724ff7da57f00ac-Paper-Conference.pdf)" _Advances in Neural Information Processing Systems_ 35 (2022): 27168-27183.
+11. Tillet, Philippe, Hsiang-Tsung Kung, and David Cox. "[Triton: an intermediate language and compiler for tiled neural network computations.](http://www.eecs.harvard.edu/~htk/publication/2019-mapl-tillet-kung-cox.pdf)" _Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages_ (2019).
+12. Kuzmin, Andrey, et al. "[FP8 Quantization: The Power of the Exponent.](https://arxiv.org/pdf/2208.09225.pdf)" _arXiv preprint arXiv:2208.09225_ (2022).
+13. Micikevicius, Paulius, et al. "[FP8 formats for deep learning.](https://arxiv.org/pdf/2209.05433.pdf)" _arXiv preprint arXiv:2209.05433_ (2022).
 
 
 
