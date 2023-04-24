@@ -157,7 +157,7 @@ We insert QDQ nodes for every quantized matmul in our network. Note that the abo
 The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn1]
 
 
-## Quantization Research
+## Alternatives to QAT
 
 For situations where QAT is insufficient or undesirable, other approaches can be considered.
 
