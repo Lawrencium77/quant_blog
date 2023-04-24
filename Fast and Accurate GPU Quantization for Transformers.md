@@ -363,7 +363,7 @@ def layernorm_Q(
 
 We now examine peformance numbers for various flavours of INT8 GEMM. For these benchmarks, we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions.
 
-Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, the following conclusions were found to be consistent over a variety of shapes/sizes.
+Benchmarks were run on a T4 GPU with input tensors of shape `[2048, 1920]` and `[1920, 1920]`. While mileage may vary for different input shapes, the following conclusions were found to be consistent over a variety of shapes/sizes.
 
 For a detailed guide to timing CUDA kernels with PyTorch, see this [previous blog](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). 
 
