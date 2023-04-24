@@ -89,7 +89,7 @@ The simplest approach is to use the same scale factor for all elements of $W$ (a
 It’s also common to share quantization parameters between some subgroups of each input matrix. A popular option is to assign a specific scale factor to each column of $W$, referred to as **per-channel (or per-column) quantization**. This is more accurate than per-tensor quantization; using a specific scale means the error incurred in quantizing each column is lower. 
 
 
-## Specifics of  INT8 GEMMs
+## Specifics of INT8 GEMMs
 
 The core element of a quantized neural network is INT8 matrix multiplication. Understanding its details is crucial for an efficient implementation. This section describes these details, and serves as context for [Part II](Part II: Fast GPU Quantization in Practice).
 
