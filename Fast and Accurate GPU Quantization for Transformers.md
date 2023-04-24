@@ -79,9 +79,6 @@ To perform calibration, one option is TensorRT’s [PyTorch Quantization Toolkit
 
 ### Quantization Granularity 
 
-> [!TODO]
-> MOVE INTO SMOOTHQUANT SECTION OR JUST BEFORE
-
 A final distinction to be made is how quantization parameters are shared between elements of our parameters and activations. Consider the following diagram of a matrix multiplication:
 
 <img src="_attachments/GEMM%20(1).svg" width="600" height="500">
