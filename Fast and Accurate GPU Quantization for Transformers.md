@@ -12,7 +12,7 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 	* [Background Concepts](#background-concepts)
 	* [Specifics of INT8 GEMMs](#specifics-of-int8-gemms)
 	* [Quantization-Aware Training](#quantization-aware-training)
-	* [SmoothQuant](#smoothquant)
+	* [Alternatives to QAT](#alternatives-to-qat)
 * [Part II: Fast GPU Quantization in Practice](#part-ii-fast-gpu-quantization-in-practice)
 	* [Available Solutions](#available-solutions)
 	* [Memory Layouts](#memory-layouts)
