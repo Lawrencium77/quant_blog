@@ -157,12 +157,17 @@ We insert QDQ nodes for every quantized matmul in our network. Note that the abo
 The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn1]
 
 
-## SmoothQuant
+## Quantization Research
 
-> [!TODO]
-> Reference LLM.int8() in this section
+For situations where QAT is insufficient or undesirable, other approaches can be considered.
 
-This section gives an intuition behind SmoothQuant [7] - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
+Recent research paper LLM.int8() [13] highlighted both the existance of extreme outliers in large language models, which severely degrades accuracy when quantizing to INT8. Their approach was to decompose each matrix multiplication into 8-bit and 16-bit parts, where the wider range FP16 was used in order to preserve the outliers.
+
+![](_attachments/Pasted%20image%2020230424140657.png)
+
+This yielded promising results, but also introduced a peformance overhead so is largely focussed on memory savings.
+
+Another paper which we found to give practical benefits, was SmoothQuant [7]. They again focus on the effect of outliers but importantly, SmoothQuant can be applied **offline**, meaning there is **no performance overheard** when running inference.
 
 The authors describe two key observations that motivate their approach:
 
@@ -201,8 +206,9 @@ $$s_j=\frac{\max(|X_j|)^\alpha}{\max({|W_j|})^{1-\alpha}}\tag{9}$$
 
 $\alpha=1$ corresponds to migrating all difficulty to the weights. $\alpha=0$ migrates all difficulty to the activations. In general we found setting $\alpha$ to be between 0.5 and 0.9 achieved good performance.
 
-It's important to appreciate that this smoothing process can be applied **offline**. For the weights, this is trivial. For the activations, we exploit the fact that GEMM operations in a transformer block often follow a layernorm. Combining the multiplication by $\textrm{diag}(s)^{-1}$  into the layernorm parameters means that it too can be done offline.
-A consequence of this is that SmoothQuant can only be applied to matrix multiplications that follow an operation which, like Layernorm, can accommodate any smoothing factor into its parameters. The diagram below indicates the relevant matrix multiplies in a standard transformer block:
+It's important to reiterate that this smoothing process can be applied **offline**. For the weights, this is trivial. For the activations, we exploit the fact that GEMM operations in a transformer block often follow a layernorm. Combining the multiplication by $\textrm{diag}(s)^{-1}$  into the layernorm parameters means that it too can be done offline.
+
+A consequence of this is that SmoothQuant can only be applied (without performance overhead) to matrix multiplications that follow an operation which can accommodate a smoothing factor into its parameters, such as LayerNorm. The diagram below indicates the relevant matrix multiplies in a standard transformer block:
 
 ![](_attachments/Blank%20diagram%20(4).svg)
 
@@ -467,6 +473,7 @@ Both of these changes mean we can consider each matmul in isolation, without hav
 10. Tillet, Philippe, Hsiang-Tsung Kung, and David Cox. "[Triton: an intermediate language and compiler for tiled neural network computations.](http://www.eecs.harvard.edu/~htk/publication/2019-mapl-tillet-kung-cox.pdf)" _Proceedings of the 3rd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages_ (2019).
 11. Kuzmin, Andrey, et al. "[FP8 Quantization: The Power of the Exponent.](https://arxiv.org/pdf/2208.09225.pdf)" _arXiv preprint arXiv:2208.09225_ (2022).
 12. Micikevicius, Paulius, et al. "[FP8 formats for deep learning.](https://arxiv.org/pdf/2209.05433.pdf)" _arXiv preprint arXiv:2209.05433_ (2022).
+13. Dettmers, Tim, et al. "[Llm. int8 (): 8-bit matrix multiplication for transformers at scale.](https://arxiv.org/pdf/2208.07339.pdf)" _arXiv preprint arXiv:2208.07339_ (2022).
 
 
 
