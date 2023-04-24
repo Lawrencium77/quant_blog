@@ -161,7 +161,7 @@ The process is then relatively straightforward: we calibrate each QDQ node, and 
 
 For situations where QAT is insufficient or undesirable, other approaches can be considered.
 
-Recent research paper LLM.int8() [13] highlighted the existance of extreme outliers in large language models, which severely degrades accuracy when quantizing to INT8. Their approach was to decompose each matrix multiplication into 8-bit and 16-bit parts, where the wider range FP16 was used in order to preserve the outliers.
+Recent research paper LLM.int8() [13] highlighted the existence of extreme outliers in large language models, which severely degrades accuracy when quantizing to INT8. Their solution was to decompose each matrix multiplication into 8-bit and 16-bit parts, where the wider range FP16 was used to preserve outliers.
 
 ![](_attachments/Pasted%20image%2020230424140657.png)
 
