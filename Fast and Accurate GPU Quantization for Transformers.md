@@ -27,7 +27,7 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 
 ## Background Concepts
 
-We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, we've listed some nice blogs/papers in the [References](#References) section [1-4].
+We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, there are some nice blogs/papers in the [References](#References) section [1-4].
 
 ### The Quantization Equation
 
@@ -71,7 +71,7 @@ The following figure [5] shows a histogram of input activations for some layer i
 
 ![](_attachments/Blank%20diagram%20(5).svg)
 
-To perform calibration, we used TensorRT’s [PyTorch Quantization Toolkit](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization). Another option is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
+To perform calibration, one option is TensorRT’s [PyTorch Quantization Toolkit](https://github.com/NVIDIA/TensorRT/tree/master/tools/pytorch-quantization). Another is to use the `QuantStub` and `DeQuantStub` nodes from [PyTorch](https://pytorch.org/docs/stable/quantization.html) directly, to capture the relevant statistics.
 
 
 ### Quantization Granularity 
@@ -162,7 +162,7 @@ The process is then relatively straightforward: we calibrate each QDQ node, and 
 > [!TODO]
 > Reference LLM.int8() in this section
 
-This section gives an intuition behind SmoothQuant [7] - a recent paper that addresses accuracy degradation when quantizing neural nets. We found this to be surprisingly effective for our own models. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
+This section gives an intuition behind SmoothQuant [7] - a recent paper that addresses accuracy degradation when quantizing neural nets, and is surprisingly effective. Importantly, SmoothQuant can be applied **offline**, meaning there are no downsides related to throughput or memory footprint.
 
 The authors describe two key observations that motivate their approach:
 
@@ -199,7 +199,7 @@ To control the migration strength, the authors propose combining each of these e
 
 $$s_j=\frac{\max(|X_j|)^\alpha}{\max({|W_j|})^{1-\alpha}}\tag{9}$$
 
-$\alpha=1$ corresponds to migrating all difficulty to the weights. $\alpha=0$ migrates all difficulty to the activations. In general we found setting $\alpha$ to be between 0.5 and 0.9 achieved good performance.
+$\alpha=1$ corresponds to migrating all difficulty to the weights. $\alpha=0$ migrates all difficulty to the activations. In general, setting $\alpha$ to be between 0.5 and 0.9 achieves good performance.
 
 It's important to appreciate that this smoothing process can be applied **offline**. For the weights, this is trivial. For the activations, we exploit the fact that GEMM operations in a transformer block often follow a layernorm. Combining the multiplication by $\textrm{diag}(s)^{-1}$  into the layernorm parameters means that it too can be done offline.
 A consequence of this is that SmoothQuant can only be applied to matrix multiplications that follow an operation which, like Layernorm, can accommodate any smoothing factor into its parameters. The diagram below indicates the relevant matrix multiplies in a standard transformer block:
@@ -228,7 +228,7 @@ In contrast, fully-fledged inference frameworks such as [TensorRT](https://githu
 
 Specifically, whilst TRT supports generic [ONNX](https://onnx.ai/) models, to achieve peak performance in their BERT implementation they rewrite the model using the TRT Network Definition API, and utilize custom plugins (such as fused multi-headed attention). This level of manual intervention means the benefits of a more generic model export + inference runtime are diminished. FasterTransformer's INT8 compatible models have been rewritten in C++ in order to leverage the best performance by using the non-standard interleaved data layout required by cuBLASLt. This limits the extensibility of existing INT8 model implementations for novel architectures.
 
-Ideally, we can achieve the performance of these inference frameworks while retaining the flexibility of [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes). The remainder of this blog concentrates on achieving both good INT8 performance _and_ flexibility. We propose modular components that can be applied to different architectures while remaining within the PyTorch framework for non-quantized parts.
+Ideally, we can achieve the performance of these inference frameworks while retaining the flexibility of [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes). The remainder of this blog concentrates on achieving both good INT8 performance _and_ flexibility. It proposes modular components that can be applied to different architectures while remaining within the PyTorch framework for non-quantized parts.
 
 ## Memory Layouts
 
@@ -279,10 +279,10 @@ While `COL32` is the most performant layout, it comes with an associated cost of
 1. Persist the data in the required format (à la [Faster Transformer](#Available%20Solutions)).
 2. Hide the cost via kernel fusion. 
 
-The latter approach is similar to how quantization/dequantization overhead is typically hidden, which we discuss next.
+The latter approach is similar to how quantization/dequantization overhead is typically hidden, which is discussed next.
 
 ## Operator Fusion Implementation
-As described in our section on [Quantization Operation Overheads](#Quantization%20Operation%20Overheads), kernel fusion is essential to developing a quantized model with superior throughput to FP16. We implemented all fused kernels using OpenAI's [Triton Language](https://github.com/openai/triton)[10]. This section provides a short example. 
+As described the [Quantization Operation Overheads](#Quantization%20Operation%20Overheads) section, kernel fusion is essential to developing a quantized model with superior throughput to FP16. These can be implemented using OpenAI's [Triton Language](https://github.com/openai/triton)[10]. This section provides a short example. 
 
 Consider the code below. It demonstrates a modified Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
 
@@ -362,9 +362,9 @@ def layernorm_Q(
 
 We now examine peformance numbers for various flavours of INT8 GEMM. For these benchmarks, we wrap the C++ APIs for cuBLASLt and CUTLASS as PyTorch extensions.
 
-Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, we found the following conclusions to be consistent over a variety of shapes/sizes.
+Benchmarks were run on a T4 GPU with input tensors of shape [2048, 1920] and [1920, 1920]. While mileage may vary for different input shapes, the following conclusions were found to be consistent over a variety of shapes/sizes.
 
-For a detailed guide to timing CUDA kernels with PyTorch, see our [previous blog](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). 
+For a detailed guide to timing CUDA kernels with PyTorch, see this [previous blog](https://www.speechmatics.com/company/articles-and-news/timing-operations-in-pytorch). 
 
 ###  INT8 vs INT32 output precision
 
@@ -374,9 +374,9 @@ One important factor which determines INT8 GEMM performance (formula above) is t
 
 INT32 return type will be slower as four times as much data is written out (and read into the next kernel). We'll also have to dequantize after the matmul to return to FP16. 
 
-In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found in our [earlier section](#i8i8). 
+In comparison, INT8 return type is faster but there is a trade-off: accuracy will be made worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found in [earlier sections](#i8i8). 
 
-The throughput figures we measured are shown below:
+The measured throughput figures are shown below:
 
 |       Kernel       | Time (ms) | vs. FP16 |
 |:------------------:|:---------:|:--------:|
@@ -390,7 +390,7 @@ Overall, the decision is very much dependent on the accuracy/performance trade-o
 
 We previously touched upon the fact that INT32 return type requires dequantizing outside of the matmul. [Performance can be improved by fusing the dequant with the matmul itself, and returning FP16 outputs.](#^091c98) 
 
-We can achieve this for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize INT8 outputs). But this only works if we apply **per-tensor** quantization, where the dequantization parameter is a single scalar. See our [Quantization Granularity](#Quantization%20Granularity) section for more more detail.
+We can achieve this for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize INT8 outputs). But this only works if we apply [per-tensor](#Quantization%20Granularity) quantization, where the dequantization parameter is a single scalar.
 
 What if we require **per-channel** quantization? In this case, CUTLASS comes to the rescue by allowing the definition of a custom epilogue function. This is applied after the matrix multiplication, in a single fused kernel. The GEMM + epilogue definition is expanded to:
 
