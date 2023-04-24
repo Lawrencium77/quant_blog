@@ -38,7 +38,9 @@ In principle, we can use any function to convert from a higher-precision to lowe
 
 $$Q(x)=\textrm{Int}(x/S)-Z \tag{1}$$
 
-Here, $Q$ and $x$ are the fixed-point output and floating-point input, while $S$ and $Z$ represent the scale factor and bias. $\textrm{Int}$ is a function that rounds to the nearest integer, clipping values outside of the representable range. 
+Here, $Q$ and $x$ are the fixed-point output and floating-point input, while $S$ and $Z$ represent the scale factor and bias. $\textrm{Int}$ is a function that rounds to the nearest integer, clipping values outside of the representable range:
+
+$$\textrm{Int}(x)=\textrm{Clip}(\textrm{Round}(x))$$
 
 After applying our lower-precision operation we return the data to its original dynamic range with dequantization: 
 
