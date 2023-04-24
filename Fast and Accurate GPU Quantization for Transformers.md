@@ -128,7 +128,8 @@ where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, w
 
 #### Quantization Operation Overheads
 
-To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html)[6]. 
+To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [
+](https://horace.io/brrr_intro.html)[6]. 
 The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
 ![](_attachments/Mode%201%20GEMM%20(4).svg)
@@ -139,7 +140,7 @@ In both cases, the Q node can sometimes be fused with a preceding operation, in 
 In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
 In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add). ^091c98
 
-For more detail, see the section on [Operator Fusion Implementation](#Operator%20Fusion%20Implementation).
+For more detail, see the section on [Operator Fusion Implementation](#operator-fusion-implementation).
 
 ## Quantization-Aware Training
 So far, we have explored **Post-Training Quantization**, in which model weights are converted to INT8 after training. The degree of accuracy degradation depends upon the effectiveness of our calibration methods.
