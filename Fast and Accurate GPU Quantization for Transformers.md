@@ -6,6 +6,8 @@ Of course, this is useless if quantizing to lower precision harms model accuracy
 
 Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. However, *achieving throughput improvements is more difficult*. The main challenge stems from overheads associated with the quantization/dequantization operations, which can mask performance gains from the blazingly fast INT8 [Tensor Core](https://www.nvidia.com/en-gb/data-center/tensor-cores/#:~:text=Tensor%20Cores%20enable%20mixed%2Dprecision,performance%20computing%20(HPC)%20tasks.) matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU.
 
+# Contents
+
 * [Part I: Accurate Quantization](#part-i-accurate-quantization)
 	* [Background Concepts](#background-concepts)
 	* [Specifics of INT8 GEMMs](#specifics-of-int8-gemms)
