@@ -30,7 +30,7 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 
 ## Background Concepts
 
-We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, there are some nice blogs/papers in the [References](#References) section [1-4].
+We'll start with a brief overview of quantization theory. This is not intended to be an exhaustive explanation; rather, it will serve as context for subsequent sections. For a more in-depth explanation, we recommend the blogs and papers given in the [References](https://chat.openai.com/?model=gpt-4#References) section [1-4].
 
 ### The Quantization Equation
 
