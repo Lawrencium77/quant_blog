@@ -167,7 +167,7 @@ Recent research paper LLM.int8() [13] highlighted the existence of extreme outli
 
 This yielded promising results, but also introduced a performance overhead so is largely focused on memory savings.
 
-Another paper which we found to give practical benefits, was SmoothQuant [7]. They again focus on the effect of outliers but importantly, SmoothQuant can be applied **offline**, meaning there is **no performance overheard** when running inference.
+Another paper that we found to give practical benefits was SmoothQuant [7]. They again focus on the effect of outliers but importantly, SmoothQuant can be applied **offline**, meaning there is **no performance overheard** when running inference.
 
 The authors describe two key observations that motivate their approach:
 
