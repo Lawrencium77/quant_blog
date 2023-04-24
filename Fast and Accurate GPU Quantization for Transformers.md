@@ -6,21 +6,22 @@ Of course, this is useless if quantizing to lower precision harms model accuracy
 
 Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. However, *achieving throughput improvements is more difficult*. The main challenge stems from overheads associated with the quantization/dequantization operations, which can mask performance gains from the blazingly fast INT8 [Tensor Core](https://www.nvidia.com/en-gb/data-center/tensor-cores/#:~:text=Tensor%20Cores%20enable%20mixed%2Dprecision,performance%20computing%20(HPC)%20tasks.) matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU.
 
-* [Part I: Accurate Quantization](#Part%20I:%20Accurate%20Quantization)
-	* [Background Concepts](#Background%20Concepts)
-	* [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
-	* [Quantization-Aware Training](#Quantization-Aware%20Training)
-	* [SmoothQuant](#SmoothQuant)
-* [Part II: Fast GPU Quantization in Practice](#Part%20II:%20Fast%20GPU%20Quantization%20in%20Practice)
-	* [Available Solutions](#Available%20Solutions)
-	* [Memory Layouts](#Memory%20Layouts)
-	* [Operator Fusion Implementation](#Operator%20Fusion%20Implementation)
-	* [INT8 GEMM Benchmarking](#INT8%20GEMM%20Benchmarking)
-* [Part III: FP8 & The Future of 8-bit Quantization](#Part%20III:%20FP8%20&%20The%20Future%20of%208-bit%20Quantization)
-	* [Data distribution alignment](#Data%20distribution%20alignment)
-	* [FP8 Training](#FP8%20Training)
-	* [cuBLASLt API](#cuBLASLt%20API)
-* [References](#References)
+* [Part I: Accurate Quantization](#part-i-accurate-quantization)
+	* [Background Concepts](#background-concepts)
+	* [Specifics of INT8 GEMMs](#specifics-of-int8-gemms)
+	* [Quantization-Aware Training](#quantization-aware-training)
+	* [SmoothQuant](#smoothquant)
+* [Part II: Fast GPU Quantization in Practice](#part-ii-fast-gpu-quantization-in-practice)
+	* [Available Solutions](#available-solutions)
+	* [Memory Layouts](#memory-layouts)
+	* [Operator Fusion Implementation](#operator-fusion-implementation)
+	* [INT8 GEMM Benchmarking](#int8-gemm-benchmarking)
+* [Part III: FP8 & The Future of 8-bit Quantization](#part-iii-fp8--the-future-of-8-bit-quantization)
+	* [Data distribution alignment](#data-distribution-alignment)
+	* [FP8 Training](#fp8-training)
+	* [cuBLASLt API](#cublaslt-api)
+* [References](#references)
+
 
 # Part I: Accurate Quantization
 
