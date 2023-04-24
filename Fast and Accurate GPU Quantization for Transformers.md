@@ -8,25 +8,14 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 
 * [Part I: Accurate Quantization](#Part%20I:%20Accurate%20Quantization)
 	* [Background Concepts](#Background%20Concepts)
-		* [The Quantization Equation](#The%20Quantization%20Equation)
-		* [Dynamic vs Static Quantization](#Dynamic%20vs%20Static%20Quantization)
-		* [Calibration](#Calibration)
-		* [Quantization Granularity](#Quantization%20Granularity)
 	* [Specifics of INT8 GEMMs](#Specifics%20of%20INT8%20GEMMs)
-		* [i8i32](#i8i32)
-		* [i8i8](#i8i8)
 	* [Quantization-Aware Training](#Quantization-Aware%20Training)
 	* [SmoothQuant](#SmoothQuant)
 * [Part II: Fast GPU Quantization in Practice](#Part%20II:%20Fast%20GPU%20Quantization%20in%20Practice)
 	* [Available Solutions](#Available%20Solutions)
-		* [TensorRT](#TensorRT)
-		* [FasterTransformer](#FasterTransformer)
 	* [Memory Layouts](#Memory%20Layouts)
 	* [Operator Fusion Implementation](#Operator%20Fusion%20Implementation)
 	* [INT8 GEMM Benchmarking](#INT8%20GEMM%20Benchmarking)
-		* [INT8 vs INT32 output precision](#INT8%20vs%20INT32%20output%20precision)
-		* [FP16 output precision](#FP16%20output%20precision)
-		* [Memory layout](#Memory%20layout)
 * [Part III: FP8 & The Future of 8-bit Quantization](#Part%20III:%20FP8%20&%20The%20Future%20of%208-bit%20Quantization)
 	* [Data distribution alignment](#Data%20distribution%20alignment)
 	* [FP8 Training](#FP8%20Training)
@@ -150,7 +139,7 @@ The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are 
 
 In both cases, the Q node can sometimes be fused with a preceding operation, in this case a layernorm. 
 In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
-In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add).
+In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add). ^091c98
 
 For more detail, see the section on [Operator Fusion Implementation](#Operator%20Fusion%20Implementation).
 
@@ -399,7 +388,7 @@ Overall, the decision is very much dependent on the accuracy/performance trade-o
 
 ### FP16 output precision
 
-We previously touched upon the fact that INT32 return type requires dequantizing outside of the matmul. Performance can be improved by fusing the dequant with the matmul itself, and returning FP16 outputs. 
+We previously touched upon the fact that INT32 return type requires dequantizing outside of the matmul. [Performance can be improved by fusing the dequant with the matmul itself, and returning FP16 outputs.](#^091c98) 
 
 We can achieve this for free by using the GEMM `α` parameter to dequantize the outputs (the same way that we requantize INT8 outputs). But this only works if we apply **per-tensor** quantization, where the dequantization parameter is a single scalar. See our [Quantization Granularity](#Quantization%20Granularity) section for more more detail.
 
@@ -446,17 +435,17 @@ The arrival of Nvidia's Hopper/Lovelace architectures brings support for a new f
 
 Choosing an FP8 quantization format can have both accuracy and performance benefits.
 
-### Data distribution alignment
+## Data distribution alignment
 When quantizing from FP16 to INT8, we not only reduce the range and number of values that can be represented, but also change the underlying distribution. Most of the tensors we want to quantize will be normally distributed. This mirrors the representable floating point values - and is in contrast to the fixed point integers which provides a uniform distribution. Research already suggests that we can remove/reduce the need for QAT by using FP8 over INT8 [11][12]. 
 
 The image below illustrates the distribution of representable values for INT8 (top) and FP8 (bottom). These have been scaled to have the same min/max. 
 
 ![](_attachments/tmp.svg)
 
-### FP8 Training
+## FP8 Training
 [Quantization-Aware Training](#Quantization-Aware%20Training) results in decreased training throughput, and approximate gradients (due to the Straight-Through Estimator). In contrast, FP8 tensor cores combined with libraries like [Transformer Engine](https://github.com/NVIDIA/TransformerEngine) pave the way for accurate and performant 8-bit training.
 
-### cuBLASLt API
+## cuBLASLt API
 Although FP8 tensor cores have the same theoretical throughput as INT8, changes to the `cublasLtMatmul` API for FP8 means we can avoid a lot of the pain associated with achieving peak 8-bit performance. Specifically:
 
 - [Input requires Row Major memory layout](https://docs.nvidia.com/cuda/cublas/index.html#cublasltmatmul) rather than COL32 - so we can bypass this conversion overhead
@@ -464,7 +453,7 @@ Although FP8 tensor cores have the same theoretical throughput as INT8, changes 
 
 Both of these changes mean we can consider each matmul in isolation, without having to apply fusions with adjacents operations. 
 
-## References
+# References
 
 1. Subramanian, Suraj, et al. "[Practical Quantization in PyTorch](https://pytorch.org/blog/quantization-in-practice/)" (2022).
 2. Mao, Lei. "[Quantization for Neural Networks](https://leimao.github.io/article/Neural-Networks-Quantization/)" (2020).
