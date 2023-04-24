@@ -40,19 +40,19 @@ $$Q(x)=\textrm{Int}(x/S)-Z \tag{1}$$
 
 Here, $Q$ and $x$ are the fixed-point output and floating-point input, while $S$ and $Z$ represent the scale factor and bias. $\textrm{Int}$ is a function that rounds to the nearest integer, clipping values outside of the representable range:
 
-$$\textrm{Int}(x)=\textrm{Clip}(\textrm{Round}(x))$$
+$$\textrm{Int}(x)=\textrm{Clip}(\textrm{Round}(x))\tag{2}$$
 
 After applying our lower-precision operation we return the data to its original dynamic range with dequantization: 
 
-$$\tilde{x}=S Q(x) + Z\tag{2}$$
+$$\tilde{x}=S Q(x) + Z\tag{3}$$
 
 This method is called **uniform quantization** since the quantized values are uniformly distributed over the input space. To calculate $S$ we select a **clipping range** $[\alpha, \beta]$ and then use:
 
-$$S=\frac{\beta-\alpha}{2^b-1}\tag{3}$$
+$$S=\frac{\beta-\alpha}{2^b-1}\tag{4}$$
 
 Here, $b$ is the number of bits in our quantization scheme. GPU based quantization schemes typically enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization functions by setting $Z=0$, which helps reduce the cost of the transformation [4].
 
-It's important to note that the rounding function in Equation $(1)$ incurs a loss of information. In general, $\tilde{x}=SQ(x)\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
+It's important to note that the rounding function in Equation $(2)$ incurs a loss of information. In general, $\tilde{x}=SQ(x)\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
 
 ### Dynamic vs Static Quantization
 A key question is how to determine the clipping range - determined by $\beta$. Too small, and we’ll excessively “truncate” outlier activations and weights. Too big, and we’ll lose precision.
@@ -99,7 +99,7 @@ We identify two types of INT8 matmul, differentiated by their return type.
 #### i8i32
 Consider the following matrix multiplication:
 
-$$Y=WX\tag{4}$$
+$$Y=WX\tag{5}$$
 
 where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$  are the input, weight, and output  tensors respectively. We omit a bias for simplicity. Consider the case where all tensors are **Floating Point**, but the matrix multiply runs in INT8. An INT8 in INT32 out (i8i32) matrix multiplication is implemented as follows:
 
@@ -112,7 +112,7 @@ There are several points to note:
 * The input $X$ first passes through a quantization operation, labelled Q. This performs the operation described in Equation $(1)$.
 * Our weights $W$ can be quantized offline. 
 * The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 values can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
-* The output is passed through a dequantization op, labelled DQ. This performs the operation described in Equation $(2)$, and returns in FP16.
+* The output is passed through a dequantization op, labelled DQ. This performs the operation described in Equation $(3)$, and returns in FP16.
 
 #### i8i8
 Returning in INT8 involves an extra step:
@@ -123,7 +123,7 @@ In this **requantization** step, labelled RQ, we convert the INT32 representatio
 
 We can think of requantization as first dequantizing to a floating point value, $Z$, and subsequently quantizing. The requantization scale factor combines these steps:
 
-$$S_{RQ}=\frac{S_Z}{S_XS_W}\tag{5}$$
+$$S_{RQ}=\frac{S_Z}{S_XS_W}\tag{6}$$
 
 where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, weights, and intermediate variable $Z$.
 
@@ -186,7 +186,7 @@ Instead, SmoothQuant aims to "migrate" the quantization difficulty from activati
 
 Mathematically, this is given by:
 
-$$Y = (X\textrm{diag}(s)^{-1})\cdot(\textrm{diag}(s)W)=\hat{X}\hat{W}\tag{6}$$
+$$Y = (X\textrm{diag}(s)^{-1})\cdot(\textrm{diag}(s)W)=\hat{X}\hat{W}\tag{7}$$
 
 where $s\in \mathbb{R}^d$  is our smoothing factor. Here's a diagram, again taken from the paper:
 
@@ -194,15 +194,15 @@ where $s\in \mathbb{R}^d$  is our smoothing factor. Here's a diagram, again take
 
 All that remains is how to determine $s$. Since quantization is easiest when all channels have the same maximum value, one possibility is:
 
-$$s_j=\max(|X_j|)\tag{7}$$
+$$s_j=\max(|X_j|)\tag{8}$$
 where $j$ is the channel index. This ensures that all channels would have the same maximum value (of 1). However, this may push too much of the quantization difficulty to the weights, meaning we harm quantization accuracy.
 
 The other extreme is:
 
-$$s_j = 1 / \max({|W_j|})\tag{8}$$
+$$s_j = 1 / \max({|W_j|})\tag{9}$$
 To control the migration strength, the authors propose combining each of these equations by introducing a hyperparameter, $\alpha \in [0,1]$:
 
-$$s_j=\frac{\max(|X_j|)^\alpha}{\max({|W_j|})^{1-\alpha}}\tag{9}$$
+$$s_j=\frac{\max(|X_j|)^\alpha}{\max({|W_j|})^{1-\alpha}}\tag{10}$$
 
 $\alpha=1$ corresponds to migrating all difficulty to the weights. $\alpha=0$ migrates all difficulty to the activations. In general, setting $\alpha$ to be between 0.5 and 0.9 achieves good performance.
 
@@ -374,7 +374,7 @@ For a detailed guide to timing CUDA kernels with PyTorch, see this [previous blo
 
 ###  INT8 vs INT32 output precision
 
-$$D=\alpha AB+\beta C\tag{10}$$
+$$D=\alpha AB+\beta C\tag{11}$$
 
 One important factor which determines INT8 GEMM performance (formula above) is the output type. The matrix multiplication will always have INT8 dtype for matrices $A$ and $B$, which then accumulate in INT32 within the kernel. But we need to decide whether output $C$ should be INT8 or INT32.
 
@@ -400,7 +400,7 @@ We can achieve this for free by using the GEMM `α` parameter to dequantize the 
 
 What if we require **per-channel** quantization? In this case, CUTLASS comes to the rescue by allowing the definition of a custom epilogue function. This is applied after the matrix multiplication, in a single fused kernel. The GEMM + epilogue definition is expanded to:
 
-$$D=f_2(f_1(\alpha AB+\beta C, d))\tag{11} $$
+$$D=f_2(f_1(\alpha AB+\beta C, d))\tag{12} $$
 The epilogue format comes from `EpilogueWithBroadcast` which applies a [binary operation](https://github.com/NVIDIA/cutlass/blob/master/include/cutlass/epilogue/thread/linear_combination_bias_elementwise.h#L215)`f1` between the matmul output and a column-wise broadcasted vector `d`, followed by an optional elementwise op `f2`.
 
 `f1` might typically be a bias addition followed by an activation function (e.g. ReLU), but in our case we want it to be a multiplication with the dequantization scalar. The epilogue is then plugged into `gemm::device::GemmUniversalWithBroadcast`.
