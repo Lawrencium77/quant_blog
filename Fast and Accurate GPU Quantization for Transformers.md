@@ -30,7 +30,7 @@ Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. 
 
 ## Background Concepts
 
-We’ll begin with a quick overview of quantization theory. For deeper reading on this subject, there are some nice blogs/papers in the [References](#References) section [1-4].
+We'll start with a brief overview of quantization theory. This is not intended to be an exhaustive explanation; rather, it will serve as context for subsequent sections. For a more in-depth explanation, we recommend the blogs and papers given in the [References](https://chat.openai.com/?model=gpt-4#References) section [1-4].
 
 ### The Quantization Equation
 
@@ -50,7 +50,7 @@ This method is called **uniform quantization** since the quantized values are un
 
 $$S=\frac{\beta-\alpha}{2^b-1}\tag{4}$$
 
-Here, $b$ is the number of bits in our quantization scheme. GPU based quantization schemes typically enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization functions by setting $Z=0$, which helps reduce the cost of the transformation [4].
+Here, $b$ is the number of bits in our quantization scheme. GPU based quantization schemes typically enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization functions by setting $Z=0$[^fn1], which helps reduce the cost of the transformation [4].
 
 It's important to note that the rounding function in Equation $(2)$ incurs a loss of information. In general, $\tilde{x}=SQ(x)\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
 
@@ -154,7 +154,7 @@ Specifically, we insert nodes into the computational graph that do quantization,
 
 We insert QDQ nodes for every quantized matmul in our network. Note that the above diagram represents i8i32 quantization. To prepare for i8i8, we insert an additional QDQ node after the matrix multiply to emulate the requantization step.
 
-The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn1]
+The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn2]
 
 
 ## Alternatives to QAT
@@ -477,4 +477,5 @@ Both of these changes mean we can consider each matmul in isolation, without hav
 
 
 
-[^fn1]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
+[^fn1]: The idea that setting $\alpha=-\beta$  implies that $Z=0$ is non-trivial. It holds true because we enforce two conditions for our quantization scheme: the first is that $\beta$ and $\alpha$ map to the maximum and minimum values of our quantized representation respectively, for instance $127$ and $-128$ in INT8; the second is that $Q(0)=0$. For more detail, see [Lei Mao's blog](https://leimao.github.io/article/Neural-Networks-Quantization/) [2].
+[^fn2]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
