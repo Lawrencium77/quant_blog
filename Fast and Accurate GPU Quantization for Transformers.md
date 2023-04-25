@@ -287,7 +287,7 @@ While `COL32` is the most performant layout, it comes with an associated cost of
 The latter approach is similar to how quantization/dequantization overhead is typically hidden, which is discussed next.
 
 ## Operator Fusion Implementation
-As described in the [Quantization Operation Overheads](#quantization-operation-overheads) section, kernel fusion is essential to developing a quantized model with superior throughput to FP16. To avoid writing CUDA these  can be implemented using OpenAI's [Triton Language](https://github.com/openai/triton)[10]. This section provides a short example.
+As described in the [Quantization Operation Overheads](#quantization-operation-overheads) section, kernel fusion is essential to developing a quantized model with superior throughput to FP16. To avoid writing CUDA these can be implemented using OpenAI's [Triton Language](https://github.com/openai/triton)[10]. This section provides a short example.
 
 Consider the code below. It demonstrates a modified Layernorm kernel, based upon that given in the [Triton documentation](https://triton-lang.org/master/getting-started/tutorials/05-layer-norm.html). Besides performing the layernorm operation, it also:
 
