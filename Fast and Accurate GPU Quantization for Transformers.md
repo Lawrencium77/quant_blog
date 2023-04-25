@@ -123,6 +123,13 @@ In this **requantization** step, labelled RQ, we convert the INT32 representatio
 
 We can think of requantization as first dequantizing to a floating point value, $Z$, and subsequently quantizing. The requantization scale factor combines these steps:
 
+
+<p align="center">
+  <img src="_attachments/equation.svg" />
+</p>
+
+![](_attachments/equation.svg)
+
 $$S_{RQ}=\frac{S_Z}{S_XS_W}\tag{6}$$
 
 where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, weights, and intermediate variable $Z$.
