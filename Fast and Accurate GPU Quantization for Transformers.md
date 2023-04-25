@@ -129,8 +129,7 @@ where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, w
 
 #### Quantization Operation Overheads
 
-To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [
-](https://horace.io/brrr_intro.html)[6]. 
+To fully realise throughput improvements from INT8 matrix multiplications, we must mitigate the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html)[6]. 
 The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
 
 ![](_attachments/Mode%201%20GEMM%20(4).svg)
