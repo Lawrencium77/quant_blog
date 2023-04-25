@@ -225,7 +225,7 @@ Thankfully, these lower level details are abstracted away by the **cuBLASLt**  
 
 ## Available Solutions
 
-While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant [7]) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8() [8]) which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** [9] also leverage CUTLASS, but wrappers for their INT8 kernels are not open source.
+While integration with these APIs is currently not supported natively in PyTorch, there are other libraries available such as [**torch-int**](https://github.com/Guangxuan-Xiao/torch-int) (SmoothQuant [8]) and [**bitsandbytes**](https://github.com/TimDettmers/bitsandbytes) (LLM.int8() [7]) which expose Python bindings to the underlying cuBLASLt/CUTLASS calls. Microsoft's **ZeroQuant** [9] also leverage CUTLASS, but wrappers for their INT8 kernels are not open source.
 
 Although these libraries offer flexibility and easy integration, they don't currently provide performance gains and are consistently slower than FP16. This is due to prioritizing accuracy and memory savings or lacking efficient quantization implementations.
 
@@ -413,7 +413,7 @@ The epilogue format comes from `EpilogueWithBroadcast` which applies a [binary o
 Whilst there might not be huge throughput improvements from FP16 output for the matmul itself, there are other performance benefits to the next kernel in the sequence (following the matmul):
 
 - 50% less data loaded (now FP16 instead of INT32)
-- Avoid fusion requirement with the dequantize operator (separating concerns)
+- Avoid fusion requirement with the dequantize operator (simpler)
 - Avoid loading the dequantization vector (CUTLASS hides the cost of this load by pipelinining it with the matmul computation)
 
 ### Memory layout
