@@ -221,7 +221,7 @@ In order to run INT8 GEMMs efficiently on CUDA GPUs we must execute the operatio
 
 Executing against Tensor Cores can be achieved by running the `mma.sync.aligned.m8n32k16.row.col.s32.s8.s8.s32` [PTX](https://en.wikipedia.org/wiki/Parallel_Thread_Execution) instruction, or calling `wmma::mma_sync` at the CUDA level. However, both approaches require careful management of data movement and layouts to maximize Tensor Core throughput. 
 
-Thankfully, these lower level details are abstracted away by the **cuBLASLt**  `cublasLtMatmul`  and **[CUTLASS](https://github.com/NVIDIA/cutlass)** `device::Gemm` APIs, both of which support IMMA (integer matrix multiply accumulate).
+Thankfully, these lower level details are abstracted away by the **cuBLASLt** `cublasLtMatmul`  and **[CUTLASS](https://github.com/NVIDIA/cutlass)** `device::Gemm` APIs, both of which support IMMA (integer matrix multiply accumulate).
 
 ## Available Solutions
 
