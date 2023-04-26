@@ -1,6 +1,6 @@
 As Transformer models increase in size, the computational cost of running inference also grows. Many organisations now face the challenge of deploying state-of-the-art models in a cost-effective way.
 
-One popular technique for doing so is **quantization** - by reducing the precision of network parameters and activations, quantization aims to **increase throughput** and **decrease memory footprint**. 
+One popular technique for doing so is **quantization** - by reducing the numerical precision of network parameters and activations, quantization aims to **increase throughput** and **decrease memory footprint**. 
 
 Of course, this is useless if quantizing to lower precision harms model accuracy. The first part of this blog introduces the quantization formulation, and explores techniques for minimising such degradations.
 
