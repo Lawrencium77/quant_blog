@@ -1,10 +1,10 @@
 As Transformer models increase in size, the computational cost of running inference also grows. Many organisations now face the challenge of deploying state-of-the-art models in a cost-effective way.
 
-One popular technique for doing so is **quantization** - by reducing the precision of network parameters and activations, quantization aims to **increase throughput** and **decrease memory footprint**. 
+One popular technique for doing so is **quantization** - by reducing the numerical precision of network parameters and activations, quantization aims to **increase throughput** and **decrease memory footprint**. 
 
-Of course, this is useless if quantizing to lower precision harms model accuracy. The first part of this blog introduces the quantization formulation, and explores techniques for minimising such degradations.
+Of course, this is less useful if quantizing to lower precision harms model accuracy. The first part of this blog introduces the quantization formulation, and explores techniques for minimising such degradations.
 
-Reducing peak memory by quantizing from FP16 to INT8 is pretty much guaranteed. However, *achieving throughput improvements is more difficult*. The main challenge stems from overheads associated with the quantization/dequantization operations, which can mask performance gains from the blazingly fast INT8 [Tensor Core](https://www.nvidia.com/en-gb/data-center/tensor-cores/#:~:text=Tensor%20Cores%20enable%20mixed%2Dprecision,performance%20computing%20(HPC)%20tasks.) matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU.
+Reducing peak memory usage by quantizing from FP16 to INT8 is pretty much guaranteed. However, *achieving throughput improvements is more difficult*. The main challenge stems from overheads associated with the quantization/dequantization operations, which can mask performance gains from the blazingly fast INT8 [Tensor Core](https://www.nvidia.com/en-gb/data-center/tensor-cores/#:~:text=Tensor%20Cores%20enable%20mixed%2Dprecision,performance%20computing%20(HPC)%20tasks.) matrix multiplies. The second part of this blog explores the nuances around achieving peak performance on GPU.
 
 # Contents
 
@@ -44,7 +44,7 @@ $$\textrm{Int}(x)=\textrm{Clip}(\textrm{Round}(x))\tag{2}$$
 
 After applying our lower-precision operation we return the data to its original dynamic range with dequantization: 
 
-$$\tilde{x}=S Q(x) + Z\tag{3}$$
+$$\tilde{x}=S \cdot Q(x) + Z\tag{3}$$
 
 This method is called **uniform quantization** since the quantized values are uniformly distributed over the input space. To calculate $S$ we select a **clipping range** $[\alpha, \beta]$ and then use:
 
@@ -52,12 +52,12 @@ $$S=\frac{\beta-\alpha}{2^b-1}\tag{4}$$
 
 Here, $b$ is the number of bits in our quantization scheme. GPU based quantization schemes typically enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization functions by setting $Z=0$[^fn1], which helps reduce the cost of the transformation [4].
 
-It's important to note that the rounding function in Equation $(2)$ incurs a loss of information. In general, $\tilde{x}=SQ(x)\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
+It's important to note that the rounding function in Equation $(2)$ incurs a loss of information. In general, $\tilde{x}=S\cdot Q(x)+ Z\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
 
 ### Dynamic vs Static Quantization
 A key question is how to determine the clipping range - determined by $\beta$. Too small, and we’ll excessively “truncate” outlier activations and weights. Too big, and we’ll lose precision.
 
-While model parameters can always be quantized offline, its activations can either be quantized **dynamically** (with the clipping range calculated for each activation during a forward pass) or **statically** (also offline). 
+While model parameters can always be quantized ahead of time, its activations can either be quantized **dynamically** (with the clipping range calculated for each activation during a forward pass) or **statically** (also offline). 
 
 Dynamic quantization tends to be more accurate but requires additional computational overhead for online scalar calibration. As a result, **we only consider static quantization on GPU** because the scalar reduction (relative to an INT8 matmul) can be costly and limit performance gains.
 
@@ -101,7 +101,7 @@ Consider the following matrix multiplication:
 
 $$Y=WX\tag{5}$$
 
-where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$  are the input, weight, and output tensors respectively. We omit a bias for simplicity. Consider the case where all tensors are **floating-point**, but the matrix multiply runs in INT8. An INT8 in INT32 out (I8I32) matrix multiplication is implemented as follows:
+where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$  are the input, weight, and output tensors respectively. We omit a bias for simplicity. Consider the case where $X$ and $Y$ are **FP16**, but the matrix multiply runs in INT8. An INT8 in INT32 out (I8I32) matrix multiplication is implemented as follows:
 
 ![](_attachments/Mode%201%20GEMM%20(3)%201.svg)
 
@@ -111,7 +111,7 @@ There are several points to note:
 
 * The input $X$ first passes through a quantization operation, labelled Q. This performs the operation described in Equation $(1)$.
 * Our weights $W$ can be quantized offline. 
-* The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 values can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
+* The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 values can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.[^fn2]
 * The output is passed through a dequantization op, labelled DQ. This performs the operation described in Equation $(3)$, and returns in FP16.
 
 #### I8I8
@@ -151,9 +151,11 @@ Specifically, we insert nodes into the computational graph that do quantization,
 
 ![](_attachments/QAT.svg)
 
+Inserting QDQ nodes in this manner is exactly equivalent to doing a quantized matrix multiply, such as the one illustrated in the [I8I32](#I8I32) section. 
+
 We insert QDQ nodes for every quantized matmul in our network. Note that the above diagram represents I8I32 quantization. To prepare for I8I8, we insert an additional QDQ node after the matrix multiply to emulate the requantization step.
 
-The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn2]
+The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn3]
 
 
 ## Alternatives to QAT
@@ -474,4 +476,5 @@ Both of these changes mean we can consider each matmul in isolation, without hav
 
 
 [^fn1]: The idea that setting $\alpha=-\beta$  implies that $Z=0$ is non-trivial. It holds true because we enforce two conditions for our quantization scheme: the first is that $\beta$ and $\alpha$ map to the maximum and minimum values of our quantized representation respectively, for instance $127$ and $-128$ in INT8; the second is that $Q(0)=0$. For more detail, see [Lei Mao's blog](https://leimao.github.io/article/Neural-Networks-Quantization/) [2].
-[^fn2]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
+[^fn2]: It's still theoretically possible to encounter an overflow if a large number of INT16 values are added together. However, this is unlikely in practice and the use of an INT32 accumulator is sufficient.
+[^fn3]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
