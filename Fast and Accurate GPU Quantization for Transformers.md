@@ -111,7 +111,7 @@ There are several points to note:
 
 * The input $X$ first passes through a quantization operation, labelled Q. This performs the operation described in Equation $(1)$.
 * Our weights $W$ can be quantized offline. 
-* The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 values can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
+* The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 values can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.[^fn2]
 * The output is passed through a dequantization op, labelled DQ. This performs the operation described in Equation $(3)$, and returns in FP16.
 
 #### I8I8
@@ -153,7 +153,7 @@ Specifically, we insert nodes into the computational graph that do quantization,
 
 We insert QDQ nodes for every quantized matmul in our network. Note that the above diagram represents I8I32 quantization. To prepare for I8I8, we insert an additional QDQ node after the matrix multiply to emulate the requantization step.
 
-The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn2]
+The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn3]
 
 
 ## Alternatives to QAT
@@ -474,4 +474,5 @@ Both of these changes mean we can consider each matmul in isolation, without hav
 
 
 [^fn1]: The idea that setting $\alpha=-\beta$  implies that $Z=0$ is non-trivial. It holds true because we enforce two conditions for our quantization scheme: the first is that $\beta$ and $\alpha$ map to the maximum and minimum values of our quantized representation respectively, for instance $127$ and $-128$ in INT8; the second is that $Q(0)=0$. For more detail, see [Lei Mao's blog](https://leimao.github.io/article/Neural-Networks-Quantization/) [2].
-[^fn2]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
+[^fn2]: It's still theoretically possible to encounter an overflow if a large number of INT16 values are added together. However, this is unlikely in practice and the use of an INT32 accumulator is sufficient.
+[^fn3]: Since the Straight-Through Estimator totally ignores each QDQ node, the [TensorRT PyTorch Quantization docs](https://docs.nvidia.com/deeplearning/tensorrt/pytorch-quantization-toolkit/docs/userguide.html#quantization-aware-training) choose not to use the term "Quantization-Aware Training". They argue that "if anything, it makes training being 'unaware' of quantization".
