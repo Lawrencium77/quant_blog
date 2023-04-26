@@ -96,12 +96,12 @@ The core element of a quantized neural network is INT8 matrix multiplication. Un
 
 We identify two types of INT8 matmul, differentiated by their return type.
 
-#### i8i32
+#### I8I32
 Consider the following matrix multiplication:
 
 $$Y=WX\tag{5}$$
 
-where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$  are the input, weight, and output tensors respectively. We omit a bias for simplicity. Consider the case where all tensors are **floating-point**, but the matrix multiply runs in INT8. An INT8 in INT32 out (i8i32) matrix multiplication is implemented as follows:
+where $X\in \mathbb{R}^{N \times d}$, $W\in \mathbb{R}^{d \times d}$, $Y\in \mathbb{R}^{N \times d}$  are the input, weight, and output tensors respectively. We omit a bias for simplicity. Consider the case where all tensors are **floating-point**, but the matrix multiply runs in INT8. An INT8 in INT32 out (I8I32) matrix multiplication is implemented as follows:
 
 ![](_attachments/Mode%201%20GEMM%20(3)%201.svg)
 
@@ -114,7 +114,7 @@ There are several points to note:
 * The accumulated output of the Matmul has **INT32** dtype. This is because multiplication of two signed INT8 values can be represented in INT16. Since a matmul involves the addition of several INT16 values, the accumulator must have dtype INT32 to prevent overflow.
 * The output is passed through a dequantization op, labelled DQ. This performs the operation described in Equation $(3)$, and returns in FP16.
 
-#### i8i8
+#### I8I8
 Returning in INT8 involves an extra step:
 
 ![](_attachments/Mode%202%20GEMM.svg)
@@ -130,15 +130,15 @@ where $S_X$, $S_W$, and $S_Z$ are the scale factors associated with the input, w
 #### Quantization Operation Overheads
 
 To fully realise throughput improvements from INT8 matrix multiplications, we must reduce the cost of the Q/DQ/RQ nodes. Since these are elementwise operations, this can be achieved through [operator fusion](https://horace.io/brrr_intro.html) [6]. 
-The following diagrams demonstrate this for i8i32 and i8i8. Fused operators are indicated by the dashed boxes:
+The following diagrams demonstrate this for I8I32 and I8I8. Fused operators are indicated by the dashed boxes:
 
 ![](_attachments/Mode%201%20GEMM%20(4).svg)
 
 ![](_attachments/Mode%202%20GEMM%20(1).svg)
 
 In both cases, the Q node can sometimes be fused with a preceding operation, in this case a layernorm. 
-In i8i32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
-In i8i8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add). ^091c98
+In I8I32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
+In I8I8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add). ^091c98
 
 For more detail, see the section on [Operator Fusion Implementation](#operator-fusion-implementation).
 
@@ -151,7 +151,7 @@ Specifically, we insert nodes into the computational graph that do quantization,
 
 ![](_attachments/QAT.svg)
 
-We insert QDQ nodes for every quantized matmul in our network. Note that the above diagram represents i8i32 quantization. To prepare for i8i8, we insert an additional QDQ node after the matrix multiply to emulate the requantization step.
+We insert QDQ nodes for every quantized matmul in our network. Note that the above diagram represents I8I32 quantization. To prepare for I8I8, we insert an additional QDQ node after the matrix multiply to emulate the requantization step.
 
 The process is then relatively straightforward: we calibrate each QDQ node, and subsequently finetune the model parameters. However, there is a complication related to backpropagation: the quantization operation is non-differentiable. In practice, we simply ignore this issue by treating  the derivative of each QDQ node as the identity function. This assumption is referred to as the **Straight-Through Estimator**.[^fn2]
 
@@ -379,7 +379,7 @@ One important factor which determines INT8 GEMM performance (formula above) is t
 
 INT32 return type will be slower as four times as much data is written out (and read into the next kernel).
 
-In comparison, INT8 return type is faster but there is a trade-off: accuracy will be worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found in [earlier sections](#i8i8). 
+In comparison, INT8 return type is faster but there is a trade-off: accuracy will be worse, as we need to requantize the output from INT32 to INT8 within the kernel. More information on this can be found in [earlier sections](#I8I8). 
 
 The measured throughput figures are shown below:
 
