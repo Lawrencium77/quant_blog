@@ -44,7 +44,7 @@ $$\textrm{Int}(x)=\textrm{Clip}(\textrm{Round}(x))\tag{2}$$
 
 After applying our lower-precision operation we return the data to its original dynamic range with dequantization: 
 
-$$\tilde{x}=S Q(x) + Z\tag{3}$$
+$$\tilde{x}=S \cdot Q(x) + Z\tag{3}$$
 
 This method is called **uniform quantization** since the quantized values are uniformly distributed over the input space. To calculate $S$ we select a **clipping range** $[\alpha, \beta]$ and then use:
 
@@ -52,7 +52,7 @@ $$S=\frac{\beta-\alpha}{2^b-1}\tag{4}$$
 
 Here, $b$ is the number of bits in our quantization scheme. GPU based quantization schemes typically enforce $\alpha=-\beta$, which is known as **symmetric quantization**. This simplifies the (de)quantization functions by setting $Z=0$[^fn1], which helps reduce the cost of the transformation [4].
 
-It's important to note that the rounding function in Equation $(2)$ incurs a loss of information. In general, $\tilde{x}=SQ(x)\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
+It's important to note that the rounding function in Equation $(2)$ incurs a loss of information. In general, $\tilde{x}=S\cdot Q(x)+ Z\not = x$.  The value $\tilde{x}-x$ is called **quantization error**. 
 
 ### Dynamic vs Static Quantization
 A key question is how to determine the clipping range - determined by $\beta$. Too small, and we’ll excessively “truncate” outlier activations and weights. Too big, and we’ll lose precision.
