@@ -19,7 +19,7 @@ Reducing peak memory usage by quantizing from FP16 to INT8 is pretty much guaran
 	* [Operator Fusion Implementation](#operator-fusion-implementation)
 	* [INT8 GEMM Benchmarking](#int8-gemm-benchmarking)
 * [Part III: FP8 & The Future of 8-bit Quantization](#part-iii-fp8--the-future-of-8-bit-quantization)
-	* [Data distribution alignment](#data-distribution-alignment)
+	* [Data Distribution Alignment](#data-distribution-alignment)
 	* [FP8 Training](#fp8-training)
 	* [cuBLASLt API](#cublaslt-api)
 * [References](#references)
