@@ -138,7 +138,7 @@ The following diagrams demonstrate this for I8I32 and I8I8. Fused operators are 
 
 In both cases, the Q node can sometimes be fused with a preceding operation, in this case a layernorm. 
 In I8I32, we see the DQ is fused with the matrix multiply itself. This ensures the dtype of the tensor that's transferred between SRAM and DRAM is FP16 instead of INT32.
-In I8I8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add). ^091c98
+In I8I8, we see the RQ is fused with the matmul. This ensures an INT8 return type. The DQ can sometimes be fused with following ops (for example, a residual add). 
 
 For more detail, see the section on [Operator Fusion Implementation](#operator-fusion-implementation).
 
