@@ -355,7 +355,10 @@ def layernorm_Q(
 	# Quantize
 	pos_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) + 127
 	neg_clamps = tl.zeros([BLOCK_SIZE], dtype=tl.float32) - 127
-	out = _quant(y, quant_scale, pos_clamps, neg_clamps) # _quant defined elsewhere
+	y = (y * quant_scale).to(tl.float32)
+	y = tl.libdevice.rint(y)
+	y = tl.where(y > 127, pos_clamps, y)
+	out = tl.where(y < -127, neg_clamps, y)
 
 	# Pointer arithmetic for Row-major --> COL32	
 	cols_out = cols // stride_out * (stride_out * M) + (cols % stride_out)
