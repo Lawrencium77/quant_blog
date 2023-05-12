@@ -265,7 +265,7 @@ The diagrams below depict 32x64 matrices where each numerical value represents t
 Zooming in on the first 16 x 4 elemnts gives a clearer picture of the layout pattern:
 
 #### Row major (CUBLASLT_ORDER_ROW)
-<img src="_attachments/Screenshot%202023-05-12%20at%2006.24.49_adobe_express.svg" width="400">
+<img src="_attachments/Screenshot%202023-05-12%20at%2006.24.49_adobe_express.svg" width="450">
 
 
 
