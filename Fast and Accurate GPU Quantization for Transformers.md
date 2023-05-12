@@ -267,9 +267,6 @@ Zooming in on the first 16 x 4 elemnts gives a clearer picture of the layout pat
 #### Row major (CUBLASLT_ORDER_ROW)
 <img src="_attachments/Screenshot%202023-05-12%20at%2006.24.49_adobe_express.svg" width="400">
 
-<img src="_attachments/Screenshot%202023-05-12%20at%2006.24.49_adobe_express.svg" width="300">
-
-<img src="_attachments/Screenshot%202023-05-12%20at%2006.24.49_adobe_express.svg" width="500">
 
 
 ![](_attachments/Screenshot%202023-05-12%20at%2006.24.49_adobe_express.svg)
