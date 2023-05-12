@@ -74,6 +74,14 @@
               "type": "starred",
               "state": {}
             }
+          },
+          {
+            "id": "0b6887f9a116d7e8",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {}
+            }
           }
         ]
       }
@@ -158,6 +166,7 @@
   },
   "active": "dcd72623a8e45c17",
   "lastOpenFiles": [
+    "_attachments/Screenshot 2023-05-12 at 06.24.49_adobe_express.svg",
     "_attachments/Pasted image 20230424140657.png",
     "Pasted image 20230424140622.png",
     "Fast and Accurate GPU Quantization for Transformers.pdf",
@@ -173,7 +182,6 @@
     "_attachments/Pasted image 20230420140718.png",
     "_attachments/Mode 1 GEMM (2).svg",
     "_attachments/Mode 1 GEMM (4).svg",
-    "_attachments/Pasted image 20230420111524.png",
     "Fast and Flexible GPU Quantization for Transformers.md",
     "Fast and Accurate GPU Quantization for Transformers - Part 2.md",
     "2023-04-05.md",
