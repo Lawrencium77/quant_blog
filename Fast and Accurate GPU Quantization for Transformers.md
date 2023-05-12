@@ -268,16 +268,16 @@ Zooming in on the first 16 x 4 elemnts gives a clearer picture of the layout pat
 ![](_attachments/Screenshot%202023-05-12%20at%2006.24.49_adobe_express.svg)
 
 #### Column major (CUBLASLT_ORDER_COL)
-![](_attachments/Pasted%20image%2020230329113209.png)
+![](_attachments/Screenshot%202023-05-12%20at%2006.51.32_adobe_express.svg)
 
 #### Column 32 (CUBLASLT_ORDER_COL32)
-![](_attachments/Pasted%20image%2020230329113410.png)
+![](_attachments/Screenshot%202023-05-12%20at%2006.54.12_adobe_express.svg)
 
 #### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
-![](_attachments/Pasted%20image%2020230329113436.png)
+![](_attachments/Screenshot%202023-05-12%20at%2006.54.32_adobe_express.svg)
 
 #### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
-![](_attachments/Pasted%20image%2020230329113458.png)
+![](_attachments/Screenshot%202023-05-12%20at%2006.54.48_adobe_express.svg)
 
 While `COL32` is the most performant layout, it comes with an associated cost of layout conversion. This may cancel out any gains from the reduced precision matmul. Therefore, we must decide to either:
 
