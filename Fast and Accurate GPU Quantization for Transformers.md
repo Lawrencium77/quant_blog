@@ -267,19 +267,19 @@ The diagrams below depict 32x64 matrices where each numerical value represents t
 Zooming in on the first 16 x 4 elemnts gives a clearer picture of the layout pattern:
 
 #### Row major (CUBLASLT_ORDER_ROW)
-![](_attachments/Pasted%20image%2020230329113112.png)
+<img src="_attachments/row_maj.svg" width="500">
 
 #### Column major (CUBLASLT_ORDER_COL)
-![](_attachments/Pasted%20image%2020230329113209.png)
+<img src="_attachments/col_maj.svg" width="500">
 
 #### Column 32 (CUBLASLT_ORDER_COL32)
-![](_attachments/Pasted%20image%2020230329113410.png)
+<img src="_attachments/col32.svg" width="500">
 
 #### Column Turing (CUBLASLT_ORDER_COL4_4R2_8C)
-![](_attachments/Pasted%20image%2020230329113436.png)
+<img src="_attachments/col_turing.svg" width="500">
 
 #### Column Ampere (CUBLASLT_ORDER_COL32_2R_4R4)
-![](_attachments/Pasted%20image%2020230329113458.png)
+<img src="_attachments/col_ampere.svg" width="500">
 
 While `COL32` is the most performant layout, it comes with an associated cost of layout conversion. This may cancel out any gains from the reduced precision matmul. Therefore, we must decide to either:
 
