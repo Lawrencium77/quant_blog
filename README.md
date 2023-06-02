@@ -1,2 +1,2 @@
-# quant_blog
+# Quantization Blog
 A blog on all-things GPU quantization.
